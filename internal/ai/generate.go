@@ -13,11 +13,12 @@ import (
 
 // SiteSpec is the AI-generated specification for a site.
 type SiteSpec struct {
-	SiteName    string            `json:"site_name"`
-	Description string            `json:"description"`
-	Colors      map[string]string `json:"colors"`
-	Fonts       map[string]string `json:"fonts"`
-	EntityTypes []EntityTypeSpec  `json:"entity_types"`
+	SiteName    string                     `json:"site_name"`
+	Description string                     `json:"description"`
+	Colors      map[string]string          `json:"colors"`
+	Fonts       map[string]string          `json:"fonts"`
+	EntityTypes []EntityTypeSpec           `json:"entity_types"`
+	Views       map[string]json.RawMessage `json:"views,omitempty"`
 }
 
 // EntityTypeSpec describes an entity type and its sample entities.
@@ -45,15 +46,32 @@ type BlockSpec struct {
 
 const generateSystemPrompt = `You are a CMS content architect. Generate a complete site specification as a single JSON object.
 
+CRITICAL: Output ONLY valid JSON. No markdown fences, no ` + "`" + `json` + "`" + ` prefix, no explanation text — just the raw JSON object.
+
 Rules:
-- Output ONLY valid JSON, no markdown fences, no explanation text.
-- Use semantic field types from: text, richtext, number, currency, date, datetime, boolean, enum, email, url, geo, asset, relation, json, slug
+- Use semantic field types: text, richtext, number, currency, date, datetime, boolean, enum, email, url, geo, asset, relation, json, slug
 - Create 2-4 entity types appropriate for the site.
 - Generate 3-5 sample entities per entity type with realistic, varied content.
 - Suggest brand colors (primary, secondary, background, surface, text, muted, border).
-- Choose appropriate font pairings (body, heading, mono).
+- Choose real Google Fonts for font pairings (e.g. "Playfair Display", "Inter", "Lora", "Poppins", "DM Sans", "Merriweather", "Nunito") for body, heading, mono fields.
 - Slugs must be lowercase, hyphen-separated.
 - Entity status should be "published" for sample data.
+
+VIEW TREE RULES:
+- Generate a "views" object containing: "Homepage", and for every entity type "<TypeName>.list" and "<TypeName>.detail".
+- Every component node may have: "type", "props", "bind", "children".
+- Use Tailwind CSS utility classes in the "class" prop for all styling. Add "class" inside "props".
+- Available component types: Stack, Section, Container, Grid, Columns, Heading, Text, Card, Badge, Price, Action, Image, RichText, Date.
+- Bind syntax: {"text": "field_name"} for Heading/Text, {"value": "field_name"} for Badge/Price, {"each": "entities"} on Card for iteration, {"blocks": "field_name"} for RichText.
+
+HOMEPAGE PATTERN:
+1. Hero Section (dark gradient bg): large Heading with site name, Text with tagline, Action CTA — use classes like "bg-gradient-to-br from-gray-900 to-gray-800 text-white py-24 px-8"
+2. Content sections (alternating): first on "bg-white", second on "bg-gray-50" — each with a section Heading (h2) and a Grid of Cards
+3. Cards: use "bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow p-6 border border-gray-100"
+4. Closing Section (dark): short CTA with "bg-gray-900 text-white py-16 px-8 text-center"
+
+LIST VIEW PATTERN: Container → Stack with Heading (h1) → Grid (columns 2 or 3) → Card (bind each: entities) → [Badge, Heading h3, Text, Price as relevant]
+DETAIL VIEW PATTERN: Container → Stack → Heading (h1, large) → optional Badge → Text or RichText for body → Price if applicable
 
 JSON schema:
 {
@@ -65,18 +83,23 @@ JSON schema:
     {
       "name": "string",
       "slug": "string",
-      "fields": [{"name": "string", "type": "string", "required": bool}],
+      "fields": [{"name": "string", "type": "string", "required": true}],
       "routes": {"list": "/path", "detail": "/path/{slug}"},
       "entities": [
         {
           "data": {"field_name": "value"},
           "slug": "string",
           "status": "published",
-          "blocks": [{"type": "paragraph|heading|code", "data": {"text": "...", "level": 1}}]
+          "blocks": [{"type": "paragraph", "data": {"text": "..."}}]
         }
       ]
     }
-  ]
+  ],
+  "views": {
+    "Homepage": { "type": "Stack", "children": [...] },
+    "TypeName.list": { "type": "Container", "children": [...] },
+    "TypeName.detail": { "type": "Container", "children": [...] }
+  }
 }`
 
 // GenerateSite asks the AI to produce a complete SiteSpec from a text description.
@@ -144,8 +167,6 @@ func ApplySiteSpec(store draft.Store, spec *SiteSpec) error {
 	for k, v := range spec.Colors {
 		colors[k] = v
 	}
-	// Store site name in colors map (nav bar reads it). Skipped in CSS output.
-	colors["site_name"] = spec.SiteName
 	fonts := map[string]string{
 		"body":    "Inter",
 		"heading": "Inter",
@@ -157,8 +178,9 @@ func ApplySiteSpec(store draft.Store, spec *SiteSpec) error {
 	if err := store.SetTokens(&draft.TokenSet{
 		ID: newID(),
 		Data: draft.Tokens{
-			Colors: colors,
-			Fonts:  fonts,
+			Colors:   colors,
+			Fonts:    fonts,
+			SiteName: spec.SiteName,
 			Scale: draft.ScaleTokens{
 				Spacing: 1,
 				Radius:  "md",
@@ -228,28 +250,33 @@ func ApplySiteSpec(store draft.Store, spec *SiteSpec) error {
 			}
 		}
 
+			// Skip programmatic view generation if AI provided views.
+		if len(spec.Views) > 0 {
+			continue
+		}
+
 		// Generate list view for types that have a list route.
 		if etSpec.Routes != nil && etSpec.Routes.List != "" {
 			listTitle := friendlySectionTitle(etSpec.Routes.List)
 			listTree := map[string]any{
 				"type": "Container",
 				"children": []any{map[string]any{
-				"type": "Stack",
-				"children": []any{
-					map[string]any{"type": "Heading", "props": map[string]any{"text": listTitle, "level": 1}},
-					map[string]any{
-						"type":  "Grid",
-						"props": map[string]any{"columns": 2},
-						"children": []any{
-							map[string]any{
-								"type": "Card",
-								"bind": map[string]any{"each": "entities"},
-								"children": buildListCardChildren(etSpec.Fields),
+					"type": "Stack",
+					"children": []any{
+						map[string]any{"type": "Heading", "props": map[string]any{"text": listTitle, "level": 1}},
+						map[string]any{
+							"type":  "Grid",
+							"props": map[string]any{"columns": 2},
+							"children": []any{
+								map[string]any{
+									"type":     "Card",
+									"bind":     map[string]any{"each": "entities"},
+									"children": buildListCardChildren(etSpec.Fields),
+								},
 							},
 						},
 					},
-				},
-			}}}
+				}}}
 			if err := store.SetView(&draft.View{
 				ID:        newID(),
 				Name:      etSpec.Name + ".list",
@@ -284,7 +311,24 @@ func ApplySiteSpec(store draft.Store, spec *SiteSpec) error {
 		}
 	}
 
-	// Homepage: hero (full-width) + content sections (in container).
+	// Store AI-generated views if present; otherwise fall back to programmatic homepage.
+	if len(spec.Views) > 0 {
+		for viewName, rawTree := range spec.Views {
+			if err := store.SetView(&draft.View{
+				ID:        newID(),
+				Name:      viewName,
+				Tree:      string(rawTree),
+				Version:   1,
+				CreatedAt: n,
+				UpdatedAt: n,
+			}); err != nil {
+				return fmt.Errorf("set view %s: %w", viewName, err)
+			}
+		}
+		return nil
+	}
+
+	// Programmatic homepage fallback (no AI views).
 	heroSection := map[string]any{
 		"type": "Section",
 		"children": []any{
