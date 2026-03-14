@@ -876,68 +876,73 @@ func seedCafe(store draft.Store, name string) error {
 	}
 
 	homepageTree := map[string]any{
-		"type":  "Stack",
-		"props": map[string]any{"class": "min-h-screen"},
+		"type": "Stack",
 		"children": []any{
+			// ── Hero with gradient overlay + texture ──
 			map[string]any{
 				"type":  "Section",
-				"props": map[string]any{"class": "min-h-[80vh] flex items-center justify-center text-center bg-gradient-to-br from-stone-900 via-stone-800 to-stone-700 text-white relative"},
+				"props": map[string]any{"class": "dh-hero min-h-[85vh] flex items-center justify-center text-center bg-gradient-to-br from-stone-950 via-stone-900 to-stone-800 text-white"},
 				"children": []any{
 					map[string]any{
 						"type":  "Container",
 						"props": map[string]any{"class": "max-w-3xl mx-auto px-6"},
 						"children": []any{
+							map[string]any{"type": "Text", "props": map[string]any{"text": "Est. 2024 · Specialty Coffee", "class": "text-xs uppercase tracking-[0.2em] text-amber-400 font-semibold mb-6"}},
+							map[string]any{"type": "Heading", "props": map[string]any{"text": name, "level": 1, "class": "text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.05] mb-6"}},
+							map[string]any{"type": "Text", "props": map[string]any{"text": "Quality coffee. Good food. Great atmosphere. Every cup tells a story of careful sourcing and expert roasting.", "class": "text-lg text-white/70 max-w-xl mx-auto mb-10 leading-relaxed"}},
 							map[string]any{
-								"type":  "Heading",
-								"props": map[string]any{"text": name, "level": 1, "class": "text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.1] mb-6"},
-							},
-							map[string]any{
-								"type":  "Text",
-								"props": map[string]any{"text": "Quality coffee. Good food. Great atmosphere.", "class": "text-xl text-amber-200 mb-10"},
-							},
-							map[string]any{
-								"type":  "Action",
-								"props": map[string]any{"label": "View Our Menu", "href": "/menu", "class": "inline-block bg-amber-700 hover:bg-amber-600 text-white px-8 py-4 rounded-xl font-semibold uppercase tracking-wider text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"},
+								"type":  "Stack",
+								"props": map[string]any{"class": "flex-row justify-center gap-4 flex-wrap"},
+								"children": []any{
+									map[string]any{"type": "Action", "props": map[string]any{"label": "View Our Menu", "href": "/menu", "class": "bg-amber-700 hover:bg-amber-600 text-white px-8 py-4 rounded-xl font-semibold uppercase tracking-wider text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-900/30 border-2 border-amber-700"}},
+									map[string]any{"type": "Action", "props": map[string]any{"label": "Our Story", "href": "#story", "class": "bg-transparent text-white px-8 py-4 rounded-xl font-semibold uppercase tracking-wider text-sm transition-all border-2 border-white/30 hover:border-white hover:bg-white/5"}},
+								},
 							},
 						},
 					},
 				},
 			},
+			// ── Features section ──
 			map[string]any{
 				"type":  "Section",
-				"props": map[string]any{"class": "py-20 bg-amber-50"},
+				"props": map[string]any{"class": "py-20 bg-amber-50/50"},
 				"children": []any{
 					map[string]any{
 						"type":  "Container",
-						"props": map[string]any{"class": "max-w-4xl mx-auto px-6"},
+						"props": map[string]any{"class": "max-w-5xl mx-auto px-6"},
 						"children": []any{
-							map[string]any{
-								"type":  "Heading",
-								"props": map[string]any{"text": "Our Menu", "level": 2, "class": "text-4xl font-bold text-center mb-2 tracking-tight text-stone-900"},
-							},
-							map[string]any{
-								"type":  "Text",
-								"props": map[string]any{"text": "Made fresh daily, sourced locally.", "class": "text-center text-stone-500 mb-12"},
-							},
+							map[string]any{"type": "Heading", "props": map[string]any{"text": "Why Choose Us?", "level": 2, "class": "text-4xl font-bold text-center mb-2 tracking-tight text-stone-900"}},
+							map[string]any{"type": "Text", "props": map[string]any{"text": "Three things we care about more than anything", "class": "text-center text-stone-500 mb-3"}},
+							map[string]any{"type": "Text", "props": map[string]any{"text": "☕", "class": "dh-ornament text-center mb-12"}},
 							map[string]any{
 								"type":  "Grid",
-								"props": map[string]any{"columns": 2, "class": "gap-8"},
+								"props": map[string]any{"columns": 3, "class": "gap-8"},
 								"children": []any{
 									map[string]any{
-										"type": "Card",
-										"bind": map[string]any{"each": "entities"},
-										"props": map[string]any{"class": "bg-white rounded-xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-6"},
+										"type":  "Card",
+										"props": map[string]any{"class": "text-center bg-white rounded-xl p-8 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300"},
 										"children": []any{
-											map[string]any{
-												"type":  "Stack",
-												"props": map[string]any{"class": "flex flex-row justify-between items-start mb-3"},
-												"children": []any{
-													map[string]any{"type": "Badge", "bind": map[string]any{"value": "category"}, "props": map[string]any{"class": "bg-amber-100 text-amber-800 text-xs font-semibold px-2 py-1 rounded-md uppercase tracking-wide"}},
-													map[string]any{"type": "Price", "bind": map[string]any{"value": "price"}, "props": map[string]any{"class": "text-amber-700 font-bold text-lg"}},
-												},
-											},
-											map[string]any{"type": "Heading", "bind": map[string]any{"text": "name"}, "props": map[string]any{"level": 3, "class": "text-lg font-bold text-stone-900 mb-1"}},
-											map[string]any{"type": "Text", "bind": map[string]any{"text": "description"}, "props": map[string]any{"class": "text-stone-500 text-sm leading-relaxed"}},
+											map[string]any{"type": "Text", "props": map[string]any{"text": "☕", "class": "dh-icon-circle"}},
+											map[string]any{"type": "Heading", "props": map[string]any{"text": "Single Origin", "level": 3, "class": "text-xl font-bold mb-3 text-stone-900"}},
+											map[string]any{"type": "Text", "props": map[string]any{"text": "Every bean traceable to a single farm. We visit our growers annually to ensure quality and fair trade.", "class": "text-stone-500 text-sm leading-relaxed"}},
+										},
+									},
+									map[string]any{
+										"type":  "Card",
+										"props": map[string]any{"class": "text-center bg-white rounded-xl p-8 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300"},
+										"children": []any{
+											map[string]any{"type": "Text", "props": map[string]any{"text": "🥐", "class": "dh-icon-circle"}},
+											map[string]any{"type": "Heading", "props": map[string]any{"text": "Fresh Daily", "level": 3, "class": "text-xl font-bold mb-3 text-stone-900"}},
+											map[string]any{"type": "Text", "props": map[string]any{"text": "Pastries baked before dawn. Bread from local sourdough. Nothing sits on the shelf past noon.", "class": "text-stone-500 text-sm leading-relaxed"}},
+										},
+									},
+									map[string]any{
+										"type":  "Card",
+										"props": map[string]any{"class": "text-center bg-white rounded-xl p-8 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300"},
+										"children": []any{
+											map[string]any{"type": "Text", "props": map[string]any{"text": "🌿", "class": "dh-icon-circle"}},
+											map[string]any{"type": "Heading", "props": map[string]any{"text": "Zero Waste", "level": 3, "class": "text-xl font-bold mb-3 text-stone-900"}},
+											map[string]any{"type": "Text", "props": map[string]any{"text": "Compostable cups, grounds to local gardens, seasonal menu to minimize food waste.", "class": "text-stone-500 text-sm leading-relaxed"}},
 										},
 									},
 								},
@@ -946,26 +951,142 @@ func seedCafe(store draft.Store, name string) error {
 					},
 				},
 			},
+			// ── Menu section with card image placeholders ──
 			map[string]any{
 				"type":  "Section",
-				"props": map[string]any{"class": "py-20 bg-stone-900 text-white text-center"},
+				"props": map[string]any{"class": "py-20"},
+				"children": []any{
+					map[string]any{
+						"type":  "Container",
+						"props": map[string]any{"class": "max-w-5xl mx-auto px-6"},
+						"children": []any{
+							map[string]any{"type": "Heading", "props": map[string]any{"text": "Our Menu", "level": 2, "class": "text-4xl font-bold text-center mb-2 tracking-tight text-stone-900"}},
+							map[string]any{"type": "Text", "props": map[string]any{"text": "Freshly roasted, carefully crafted", "class": "text-center text-stone-500 mb-3"}},
+							map[string]any{"type": "Text", "props": map[string]any{"text": "✦", "class": "dh-ornament text-center mb-12"}},
+							map[string]any{
+								"type":  "Grid",
+								"props": map[string]any{"columns": 2, "class": "gap-6"},
+								"children": []any{
+									map[string]any{
+										"type": "Card",
+										"bind": map[string]any{"each": "entities"},
+										"props": map[string]any{"class": "bg-white rounded-xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"},
+										"children": []any{
+											// Card image placeholder
+											map[string]any{"type": "Section", "props": map[string]any{"class": "dh-card-img dh-card-img--dark"}},
+											map[string]any{
+												"type":  "Stack",
+												"props": map[string]any{"class": "p-6 gap-2"},
+												"children": []any{
+													map[string]any{
+														"type":  "Stack",
+														"props": map[string]any{"class": "flex-row justify-between items-center"},
+														"children": []any{
+															map[string]any{"type": "Badge", "bind": map[string]any{"value": "category"}, "props": map[string]any{"class": "bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider"}},
+															map[string]any{"type": "Price", "bind": map[string]any{"value": "price"}, "props": map[string]any{"class": "text-xl font-extrabold text-amber-700"}},
+														},
+													},
+													map[string]any{"type": "Heading", "bind": map[string]any{"text": "name"}, "props": map[string]any{"level": 3, "class": "text-lg font-bold text-stone-900"}},
+													map[string]any{"type": "Text", "bind": map[string]any{"text": "description"}, "props": map[string]any{"class": "text-stone-500 text-sm leading-relaxed"}},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			// ── Stats bar ──
+			map[string]any{
+				"type":  "Section",
+				"props": map[string]any{"class": "py-12 bg-amber-800 text-white"},
+				"children": []any{
+					map[string]any{
+						"type":  "Container",
+						"props": map[string]any{"class": "max-w-5xl mx-auto px-6"},
+						"children": []any{
+							map[string]any{
+								"type":  "Stack",
+								"props": map[string]any{"class": "dh-stats"},
+								"children": []any{
+									map[string]any{"type": "Fragment", "children": []any{
+										map[string]any{"type": "Text", "props": map[string]any{"text": "5+", "class": "number"}},
+										map[string]any{"type": "Text", "props": map[string]any{"text": "Years Brewing", "class": "label"}},
+									}},
+									map[string]any{"type": "Fragment", "children": []any{
+										map[string]any{"type": "Text", "props": map[string]any{"text": "12k", "class": "number"}},
+										map[string]any{"type": "Text", "props": map[string]any{"text": "Cups Monthly", "class": "label"}},
+									}},
+									map[string]any{"type": "Fragment", "children": []any{
+										map[string]any{"type": "Text", "props": map[string]any{"text": "4.8", "class": "number"}},
+										map[string]any{"type": "Text", "props": map[string]any{"text": "Google Rating", "class": "label"}},
+									}},
+									map[string]any{"type": "Fragment", "children": []any{
+										map[string]any{"type": "Text", "props": map[string]any{"text": "100%", "class": "number"}},
+										map[string]any{"type": "Text", "props": map[string]any{"text": "Fair Trade", "class": "label"}},
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+			// ── Story section ──
+			map[string]any{
+				"type":  "Section",
+				"props": map[string]any{"class": "py-20 bg-stone-900 text-white"},
+				"children": []any{
+					map[string]any{
+						"type":  "Container",
+						"props": map[string]any{"class": "max-w-5xl mx-auto px-6"},
+						"children": []any{
+							map[string]any{
+								"type":  "Columns",
+								"props": map[string]any{"ratio": []any{1, 1}, "class": "gap-16 items-center"},
+								"children": []any{
+									// Left: decorative quote block
+									map[string]any{
+										"type":  "Section",
+										"props": map[string]any{"class": "dh-quote-bg aspect-[4/3] rounded-xl bg-gradient-to-br from-stone-800 to-stone-700 flex items-center justify-center"},
+									},
+									// Right: text content
+									map[string]any{
+										"type":  "Stack",
+										"props": map[string]any{"class": "gap-6"},
+										"children": []any{
+											map[string]any{"type": "Heading", "props": map[string]any{"text": "A story of passion and craft", "level": 2, "class": "text-4xl font-bold tracking-tight leading-tight"}},
+											map[string]any{"type": "Text", "props": map[string]any{"text": "We started in a tiny garage with a single espresso machine and a dream. Today we serve hundreds of cups daily, but the principle hasn't changed: every cup should be the best you've ever had.", "class": "text-white/70 leading-relaxed text-lg"}},
+											map[string]any{"type": "Text", "props": map[string]any{"text": "We source directly from small farms in Ethiopia, Colombia, and Guatemala. We roast in small batches, twice a week.", "class": "text-white/60 leading-relaxed"}},
+											map[string]any{
+												"type":  "Stack",
+												"props": map[string]any{"class": "dh-signature"},
+												"children": []any{
+													map[string]any{"type": "Text", "props": map[string]any{"text": "Marco & Elena", "class": "italic text-amber-400 text-lg"}},
+													map[string]any{"type": "Text", "props": map[string]any{"text": "Founders", "class": "text-white/40 text-sm"}},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			// ── Visit section ──
+			map[string]any{
+				"type":  "Section",
+				"props": map[string]any{"class": "py-20 bg-amber-50 text-center"},
 				"children": []any{
 					map[string]any{
 						"type":  "Container",
 						"props": map[string]any{"class": "max-w-xl mx-auto px-6"},
 						"children": []any{
-							map[string]any{
-								"type":  "Heading",
-								"props": map[string]any{"text": "Visit Us", "level": 2, "class": "text-4xl font-bold tracking-tight mb-6"},
-							},
-							map[string]any{
-								"type":  "Text",
-								"props": map[string]any{"text": "Mon–Fri 7am–6pm  ·  Sat–Sun 8am–5pm", "class": "text-amber-200 text-lg mb-8"},
-							},
-							map[string]any{
-								"type":  "Action",
-								"props": map[string]any{"label": "Get Directions", "href": "#", "class": "inline-block border border-amber-400 text-amber-400 hover:bg-amber-700 hover:border-amber-700 hover:text-white px-8 py-4 rounded-xl font-semibold uppercase tracking-wider text-sm transition-all"},
-							},
+							map[string]any{"type": "Heading", "props": map[string]any{"text": "Visit Us", "level": 2, "class": "text-4xl font-bold tracking-tight mb-4 text-stone-900"}},
+							map[string]any{"type": "Text", "props": map[string]any{"text": "Open daily · 7:00 AM — 6:00 PM", "class": "text-stone-500 text-lg mb-8"}},
+							map[string]any{"type": "Text", "props": map[string]any{"text": "📍 Corner of Main & Oak, Old Town", "class": "inline-flex items-center gap-2 bg-white px-6 py-3 rounded-xl shadow-sm text-stone-700 font-medium"}},
 						},
 					},
 				},
