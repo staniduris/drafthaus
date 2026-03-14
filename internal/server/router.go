@@ -1,6 +1,7 @@
 package server
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/drafthaus/drafthaus/internal/draft"
@@ -67,6 +68,22 @@ func (r *Router) BuildRoutes(store draft.Store) error {
 			})
 		}
 	}
+
+	// Sort routes: exact list routes first, then detail routes with fewer segments,
+	// then catch-all patterns like /{slug} last. This ensures /work matches the
+	// Project list route before the Page detail route /{slug}.
+	sort.SliceStable(r.routes, func(i, j int) bool {
+		ri, rj := r.routes[i], r.routes[j]
+		// List routes before detail routes
+		if ri.kind != rj.kind {
+			return ri.kind < rj.kind // routeList=0 < routeDetail=1
+		}
+		// Among detail routes, more specific patterns (more segments) first,
+		// catch-all single-segment patterns (/{slug}) last
+		si := strings.Count(ri.pattern, "/")
+		sj := strings.Count(rj.pattern, "/")
+		return si > sj
+	})
 
 	return nil
 }
