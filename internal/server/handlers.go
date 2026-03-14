@@ -56,6 +56,8 @@ func (h *Handlers) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 
 	switch {
+	case path == "/_health":
+		HealthHandler(h.store)(w, r)
 	case path == "/_admin/login":
 		HandleLogin(h.store, h.sessions)(w, r)
 	case path == "/_admin/logout":

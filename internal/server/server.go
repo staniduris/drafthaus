@@ -56,13 +56,19 @@ func New(store draft.Store, host string, port int) (*Server, error) {
 
 	handlers := NewHandlers(store, resolver, pipeline, router, sessions, tracker, pluginRT, hookMgr)
 
-	// Middleware chain: Security → Logging → Gzip → CORS → Auth → Analytics → Handlers
+	pageRL := NewRateLimiter(300, time.Minute)
+	apiRL := NewRateLimiter(100, time.Minute)
+	cache := NewPageCache(5 * time.Minute)
+
+	// Middleware chain: Security → Logging → Gzip → CORS → RateLimit → Auth → Analytics → Cache → Handlers
 	var h http.Handler = handlers
 	if tracker != nil {
 		h = analytics.Middleware(tracker)(h)
 	}
+	h = CacheMiddleware(cache)(h)
 	h = AuthMiddleware(store, sessions)(h)
 	h = CORSMiddleware(h)
+	h = tieredRateLimitMiddleware(pageRL, apiRL)(h)
 	h = GzipMiddleware(h)
 	h = LoggingMiddleware(h)
 	h = SecurityMiddleware(h)
