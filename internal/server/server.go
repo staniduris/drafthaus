@@ -88,6 +88,11 @@ func New(store draft.Store, host string, port int) (*Server, error) {
 	}, nil
 }
 
+// Handler returns the root http.Handler used by this server.
+func (s *Server) Handler() http.Handler {
+	return s.httpServer.Handler
+}
+
 // Start begins serving HTTP traffic. It returns nil only when the server
 // closes gracefully; any other error is propagated.
 func (s *Server) Start() error {
