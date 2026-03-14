@@ -164,24 +164,40 @@ p{line-height:1.7}
 }
 
 .dh-section:first-child{
-  padding-top:%s;
-  padding-bottom:%s;
+  background:linear-gradient(135deg,var(--dh-color-text,#0F172A) 0%%,color-mix(in srgb,var(--dh-color-text,#0F172A),var(--dh-color-primary,#2563EB) 30%%) 100%%);
+  color:var(--dh-color-background,#fff);
+  padding:5rem 2rem;
+  margin:0 0 2rem;
   text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+
+.dh-section:first-child::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:radial-gradient(circle at 20%% 50%%,rgba(255,255,255,0.05) 0%%,transparent 50%%),
+              radial-gradient(circle at 80%% 20%%,rgba(255,255,255,0.03) 0%%,transparent 40%%);
+  pointer-events:none;
 }
 
 .dh-section:first-child .dh-heading{
-  margin-bottom:0.75rem;
+  color:var(--dh-color-background,#fff);
+  font-size:clamp(2.5rem,6vw,4.5rem);
+  margin-bottom:1rem;
+  position:relative;
 }
 
 .dh-section:first-child .dh-text{
-  font-size:1.25rem;
-  color:%s;
-  max-width:40rem;
-  margin-left:auto;
-  margin-right:auto;
+  color:rgba(255,255,255,0.75);
+  font-size:clamp(1.1rem,2vw,1.35rem);
+  max-width:38rem;
+  margin:0 auto;
+  position:relative;
 }
 
-`, padXl, padXl, padLg, colorVar("muted"))
+`, padXl)
 
 	fmt.Fprintf(&b, `.dh-sidebar{
   display:grid;
@@ -269,8 +285,20 @@ p{line-height:1.7}
   border-radius:%s;
   padding:%s;
   background:%s;
-  transition:all 0.2s ease;
+  position:relative;
+  overflow:hidden;
+  transition:all 0.25s ease;
 }
+.dh-card::before{
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;
+  height:3px;
+  background:linear-gradient(90deg,%s,%s);
+  opacity:0;
+  transition:opacity 0.25s;
+}
+.dh-card:hover::before{opacity:1}
 .dh-card .dh-heading{
   margin-bottom:0.5rem;
 }
@@ -286,11 +314,22 @@ p{line-height:1.7}
 }
 .dh-card:hover{
   border-color:%s;
-  box-shadow:0 4px 12px rgba(0,0,0,0.06);
-  transform:translateY(-2px);
+  box-shadow:0 12px 32px rgba(0,0,0,0.1);
+  transform:translateY(-4px);
+}
+.dh-card .dh-price{
+  margin-top:0.75rem;
+  padding-top:0.75rem;
+  border-top:1px solid %s;
+  display:block;
+}
+.dh-card .dh-badge{
+  margin-bottom:0.5rem;
 }
 
-`, colorVar("border"), radius, padLg, colorVar("background"), colorVar("muted"), colorVar("primary"))
+`, colorVar("border"), radius, padLg, colorVar("background"),
+		colorVar("primary"), colorVar("secondary"),
+		colorVar("muted"), colorVar("primary"), colorVar("border"))
 
 	// ---- Badges -------------------------------------------------------------
 	fmt.Fprintf(&b, `.dh-badge{
@@ -491,15 +530,22 @@ p{line-height:1.7}
 	// ---- Footer -------------------------------------------------------------
 	fmt.Fprintf(&b, `.dh-footer{
   text-align:center;
-  padding:2.5rem 1rem;
+  padding:3rem 1rem;
   margin-top:4rem;
-  border-top:1px solid %s;
-  color:%s;
+  border-top:none;
+  background:%s;
+  color:rgba(255,255,255,0.5);
   font-size:0.8125rem;
   letter-spacing:0.01em;
 }
+.dh-footer p{color:inherit}
 
-`, colorVar("border"), colorVar("muted"))
+`, colorVar("text"))
+
+	b.WriteString(`.dh-site-nav{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.dh-richtext{max-width:42rem}
+
+`)
 
 	// ---- Responsive ---------------------------------------------------------
 	b.WriteString(`@media (max-width:768px){

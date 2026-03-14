@@ -373,15 +373,40 @@ func friendlySectionTitle(routePath string) string {
 	}
 }
 
-// buildListCardChildren returns card child components for the first 2 non-richtext fields.
+// buildListCardChildren returns card child components: category badge, heading, description, price.
 func buildListCardChildren(fields []draft.FieldDef) []any {
 	var children []any
+	var priceField string
+	var categoryField string
+
+	// First pass: find special fields
+	for _, f := range fields {
+		if f.Type == draft.FieldCurrency {
+			priceField = f.Name
+		}
+		if f.Type == draft.FieldEnum {
+			categoryField = f.Name
+		}
+	}
+
+	// Category badge first
+	if categoryField != "" {
+		children = append(children, map[string]any{
+			"type": "Badge",
+			"bind": map[string]any{"value": categoryField},
+		})
+	}
+
+	// Heading + one text description
 	count := 0
 	for _, f := range fields {
 		if count >= 2 {
 			break
 		}
-		if f.Type == draft.FieldRichText || f.Type == draft.FieldAsset {
+		if f.Type == draft.FieldRichText || f.Type == draft.FieldAsset ||
+			f.Type == draft.FieldCurrency || f.Type == draft.FieldEnum ||
+			f.Type == draft.FieldBool || f.Type == draft.FieldSlug ||
+			f.Type == draft.FieldDateTime || f.Type == draft.FieldDate {
 			continue
 		}
 		nodeType := "Text"
@@ -400,6 +425,15 @@ func buildListCardChildren(fields []draft.FieldDef) []any {
 		children = append(children, node)
 		count++
 	}
+
+	// Price last
+	if priceField != "" {
+		children = append(children, map[string]any{
+			"type": "Price",
+			"bind": map[string]any{"value": priceField},
+		})
+	}
+
 	if len(children) == 0 {
 		children = []any{
 			map[string]any{"type": "Text", "bind": map[string]any{"text": "id"}},
