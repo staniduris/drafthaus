@@ -131,7 +131,7 @@ func pubDateFor(e *draft.Entity) string {
 		}
 	}
 	if e.CreatedAt > 0 {
-		return time.UnixMilli(e.CreatedAt).UTC().Format(time.RFC1123Z)
+		return time.Unix(e.CreatedAt, 0).UTC().Format(time.RFC1123Z)
 	}
 	return time.Now().UTC().Format(time.RFC1123Z)
 }

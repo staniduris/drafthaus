@@ -74,6 +74,7 @@ type Store interface {
 	CreateAdminUser(username, password string) error
 	ValidateCredentials(username, password string) (bool, error)
 	HasAdminUsers() (bool, error)
+	UpdatePassword(username, newPassword string) error
 
 	// Plugins
 	SavePlugin(name, version string, wasm []byte, config map[string]any) error
@@ -113,10 +114,11 @@ type SQLiteStore struct {
 
 // Open opens or creates a .draft file and initializes the schema.
 func Open(path string) (*SQLiteStore, error) {
-	db, err := sql.Open("sqlite", path+"?_pragma=busy_timeout(5000)")
+	db, err := sql.Open("sqlite", path+"?_pragma=busy_timeout(5000)&_pragma=foreign_keys(ON)")
 	if err != nil {
 		return nil, fmt.Errorf("open draft file: %w", err)
 	}
+	db.SetMaxOpenConns(1)
 
 	if err := InitSchema(db); err != nil {
 		db.Close()

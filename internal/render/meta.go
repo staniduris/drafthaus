@@ -142,6 +142,8 @@ func buildJSONLD(entity *graph.ResolvedEntity, name, description string) string 
 	if err != nil {
 		return ""
 	}
-	return string(b)
+	jsonStr := string(b)
+	jsonStr = strings.ReplaceAll(jsonStr, "</", `<\/`)
+	return jsonStr
 }
 

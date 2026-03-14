@@ -47,8 +47,8 @@ func EntityToJSON(re *graph.ResolvedEntity) map[string]any {
 		"data":       e.Data,
 		"blocks":     blocksOut,
 		"relations":  relOut,
-		"created_at": time.UnixMilli(e.CreatedAt).UTC().Format(time.RFC3339),
-		"updated_at": time.UnixMilli(e.UpdatedAt).UTC().Format(time.RFC3339),
+		"created_at": time.Unix(e.CreatedAt, 0).UTC().Format(time.RFC3339),
+		"updated_at": time.Unix(e.UpdatedAt, 0).UTC().Format(time.RFC3339),
 	}
 }
 

@@ -43,6 +43,23 @@ func (s *SQLiteStore) ValidateCredentials(username, password string) (bool, erro
 	return true, nil
 }
 
+// UpdatePassword replaces the password for an existing admin user.
+func (s *SQLiteStore) UpdatePassword(username, newPassword string) error {
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+	result, err := s.db.Exec("UPDATE admin_users SET password = ? WHERE username = ?", string(hash), username)
+	if err != nil {
+		return fmt.Errorf("update password: %w", err)
+	}
+	n, _ := result.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("user not found: %s", username)
+	}
+	return nil
+}
+
 // HasAdminUsers returns true if at least one admin user exists.
 func (s *SQLiteStore) HasAdminUsers() (bool, error) {
 	var count int

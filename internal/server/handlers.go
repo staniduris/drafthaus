@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -276,9 +277,10 @@ func (h *Handlers) serve404(w http.ResponseWriter) {
 }
 
 func (h *Handlers) serveError(w http.ResponseWriter, err error) {
+	log.Printf("ERROR: %v", err)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusInternalServerError)
-	fmt.Fprintf(w, page500HTML, err)
+	fmt.Fprint(w, page500HTML)
 }
 
 const page404HTML = `<!DOCTYPE html>
@@ -290,8 +292,8 @@ const page404HTML = `<!DOCTYPE html>
 const page500HTML = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><title>Error</title>
 <style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f9fafb}
-.box{text-align:center;padding:2rem}h1{font-size:2rem;margin:0;color:#dc2626}pre{text-align:left;background:#f3f4f6;padding:1rem;border-radius:0.5rem;overflow:auto;color:#374151}</style>
-</head><body><div class="box"><h1>Internal Server Error</h1><pre>%s</pre></div></body></html>`
+.box{text-align:center;padding:2rem}h1{font-size:2rem;margin:0;color:#dc2626}p{color:#6b7280}</style>
+</head><body><div class="box"><h1>Internal Server Error</h1><p>Something went wrong. Please try again later.</p></div></body></html>`
 
 // -------------------------------------------------------------------------
 // Projection handlers (RSS, sitemap, public API)
@@ -445,6 +447,18 @@ func (h *Handlers) servePublicAPI(w http.ResponseWriter, r *http.Request) {
 // -------------------------------------------------------------------------
 
 func (h *Handlers) apiDispatch(w http.ResponseWriter, r *http.Request) {
+	// CSRF check: non-GET/OPTIONS requests must include X-Requested-With header,
+	// unless they are multipart form uploads (which cannot set custom headers).
+	if r.Method != http.MethodGet && r.Method != http.MethodOptions {
+		if r.Header.Get("X-Requested-With") != "XMLHttpRequest" {
+			ct := r.Header.Get("Content-Type")
+			if !strings.HasPrefix(ct, "multipart/form-data") {
+				jsonError(w, "CSRF validation failed — include X-Requested-With: XMLHttpRequest header", http.StatusForbidden)
+				return
+			}
+		}
+	}
+
 	// Strip "/_api/" prefix.
 	sub := strings.TrimPrefix(r.URL.Path, "/_api/")
 	sub = strings.TrimRight(sub, "/")
@@ -554,7 +568,7 @@ func (h *Handlers) updateTypeAPI(w http.ResponseWriter, r *http.Request, slug st
 		return
 	}
 	t.ID = existing.ID
-	t.UpdatedAt = time.Now().UnixMilli()
+	t.UpdatedAt = time.Now().Unix()
 
 	if err := h.store.UpdateType(&t); err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -671,7 +685,7 @@ func (h *Handlers) updateEntityAPI(w http.ResponseWriter, r *http.Request, typeS
 	}
 	e.ID = existing.ID
 	e.TypeID = t.ID
-	e.UpdatedAt = time.Now().UnixMilli()
+	e.UpdatedAt = time.Now().Unix()
 
 	if err := h.store.UpdateEntity(&e); err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -836,7 +850,7 @@ func (h *Handlers) uploadAssetAPI(w http.ResponseWriter, r *http.Request) {
 		Mime:      mimeType,
 		Size:      int64(len(data)),
 		Data:      data,
-		CreatedAt: time.Now().UnixMilli(),
+		CreatedAt: time.Now().Unix(),
 	}
 
 	if err := h.store.StoreAsset(asset); err != nil {
@@ -889,7 +903,7 @@ func (h *Handlers) setViewAPI(w http.ResponseWriter, r *http.Request, name strin
 		return
 	}
 	v.Name = name
-	v.UpdatedAt = time.Now().UnixMilli()
+	v.UpdatedAt = time.Now().Unix()
 
 	if err := h.store.SetView(&v); err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
@@ -928,7 +942,7 @@ func (h *Handlers) setTokensAPI(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	ts.UpdatedAt = time.Now().UnixMilli()
+	ts.UpdatedAt = time.Now().Unix()
 
 	if err := h.store.SetTokens(&ts); err != nil {
 		jsonError(w, err.Error(), http.StatusInternalServerError)

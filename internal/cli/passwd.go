@@ -19,14 +19,8 @@ func Passwd(path, username, newPassword string) error {
 	}
 	defer store.Close()
 
-	// Delete existing user and recreate with new password
-	db := store.DB()
-	if _, err := db.Exec("DELETE FROM admin_users WHERE username = ?", username); err != nil {
-		return fmt.Errorf("remove old user: %w", err)
-	}
-
-	if err := store.CreateAdminUser(username, newPassword); err != nil {
-		return fmt.Errorf("create user: %w", err)
+	if err := store.UpdatePassword(username, newPassword); err != nil {
+		return fmt.Errorf("update password: %w", err)
 	}
 
 	fmt.Printf("Password updated for %s\n", username)
