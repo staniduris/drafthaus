@@ -1,0 +1,14 @@
+# Binary
+drafthaus
+
+# SQLite files
+*.draft
+*.draft-wal
+*.draft-shm
+
+# OS files
+.DS_Store
+
+# IDE
+.idea/
+.vscode/

@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drafthaus Admin</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#2563eb;--blue-hover:#1d4ed8;--blue-light:#eff6ff;
+  --green:#16a34a;--red:#dc2626;--amber:#d97706;
+  --gray-50:#f8fafc;--gray-100:#f1f5f9;--gray-200:#e2e8f0;
+  --gray-300:#cbd5e1;--gray-400:#94a3b8;--gray-500:#64748b;
+  --gray-600:#475569;--gray-700:#334155;--gray-800:#1e293b;--gray-900:#0f172a;
+  --sidebar-w:220px;--topbar-h:52px;
+  --radius:6px;--shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
+  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
+}
+html,body{height:100%;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;line-height:1.5;color:var(--gray-800);background:var(--gray-50)}
+#app{display:flex;height:100%}
+#sidebar{width:var(--sidebar-w);background:var(--gray-800);color:#e2e8f0;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+#main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+#topbar{height:var(--topbar-h);background:#fff;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;box-shadow:var(--shadow)}
+#content{flex:1;overflow-y:auto;padding:24px}
+.sb-logo{padding:16px 16px 12px;font-size:16px;font-weight:700;color:#fff;letter-spacing:-.3px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sb-logo span{opacity:.5;font-weight:400;font-size:12px;display:block;margin-top:1px}
+.sb-section{padding:8px 0}
+.sb-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gray-500);padding:8px 16px 4px}
+.sb-item{display:flex;align-items:center;gap:8px;padding:7px 16px;cursor:pointer;color:#cbd5e1;font-size:13px;transition:background .12s,color .12s;border:none;background:none;width:100%;text-align:left}
+.sb-item:hover{background:rgba(255,255,255,.07);color:#fff}
+.sb-item.active{background:rgba(37,99,235,.25);color:#93c5fd}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:background .12s;text-decoration:none}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:var(--blue-hover)}
+.btn-secondary{background:#fff;color:var(--gray-700);border:1px solid var(--gray-200)}
+.btn-secondary:hover{background:var(--gray-50)}
+.btn-danger{background:var(--red);color:#fff}
+.btn-danger:hover{background:#b91c1c}
+.btn-sm{padding:4px 10px;font-size:12px}
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);border:1px solid var(--gray-200)}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;gap:10px}
+.card-header h2{font-size:15px;font-weight:600;flex:1}
+.card-body{padding:20px}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.stat-card .label{font-size:12px;color:var(--gray-500);font-weight:500;margin-bottom:4px}
+.stat-card .value{font-size:28px;font-weight:700;color:var(--gray-800)}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{text-align:left;font-size:12px;font-weight:600;color:var(--gray-500);padding:8px 12px;border-bottom:2px solid var(--gray-200)}
+tbody tr{border-bottom:1px solid var(--gray-100);cursor:pointer;transition:background .1s}
+tbody tr:hover{background:var(--gray-50)}
+tbody td{padding:10px 12px;font-size:13px}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.badge-draft{background:#fef3c7;color:#92400e}
+.badge-published{background:#dcfce7;color:#14532d}
+.badge-archived{background:var(--gray-100);color:var(--gray-500)}
+.form-grid{display:grid;grid-template-columns:1fr;gap:16px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group label{font-size:12px;font-weight:600;color:var(--gray-600)}
+.hint{font-size:11px;color:var(--gray-400)}
+input[type=text],input[type=email],input[type=url],input[type=number],input[type=datetime-local],input[type=date],select,textarea{width:100%;padding:7px 10px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:13px;font-family:inherit;color:var(--gray-800);background:#fff;transition:border-color .12s,box-shadow .12s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+textarea{resize:vertical;min-height:80px}
+.checkbox-group{display:flex;align-items:center;gap:8px}
+.checkbox-group input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--blue)}
+.block-editor{border:1px solid var(--gray-200);border-radius:var(--radius);overflow:hidden;background:#fff}
+.block-toolbar{padding:8px 12px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);display:flex;align-items:center;gap:8px}
+.block-list{padding:8px}
+.block-item{display:flex;gap:8px;padding:8px;border:1px solid transparent;border-radius:var(--radius);margin-bottom:6px;background:#fff}
+.block-item:hover{border-color:var(--gray-200)}
+.block-body{flex:1;min-width:0}
+.block-type-bar{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.block-type-label{font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em}
+.icon-btn{background:none;border:none;cursor:pointer;padding:3px 6px;border-radius:4px;color:var(--gray-400);font-size:13px}
+.icon-btn:hover{background:var(--gray-100);color:var(--gray-600)}
+.token-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px}
+.color-row{display:flex;align-items:center;gap:10px}
+.color-row input[type=color]{width:36px;height:30px;padding:2px;border:1px solid var(--gray-300);border-radius:var(--radius);cursor:pointer;background:#fff}
+.color-row input[type=text]{flex:1}
+.section-title{font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--gray-100)}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--gray-200);margin-bottom:20px}
+.tab{padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--gray-500);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab:hover{color:var(--gray-700)}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.field-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);margin-bottom:6px}
+.field-row .fname{font-weight:600;font-size:13px;flex:1}
+.ftype{font-size:11px;color:var(--gray-400);background:var(--gray-100);padding:2px 8px;border-radius:20px}
+#toast{position:fixed;bottom:24px;right:24px;z-index:1000;display:flex;flex-direction:column;gap:8px}
+.toast-msg{padding:10px 16px;border-radius:var(--radius);font-size:13px;font-weight:500;box-shadow:var(--shadow-md);animation:slideIn .2s ease;color:#fff}
+.toast-success{background:#15803d}
+.toast-error{background:var(--red)}
+@keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gray-400);margin-bottom:20px}
+.breadcrumb-link{color:var(--blue);text-decoration:none;cursor:pointer;background:none;border:none;font-size:13px;font-family:inherit;padding:0}
+.breadcrumb-link:hover{text-decoration:underline}
+.empty{text-align:center;padding:48px 24px;color:var(--gray-400)}
+.empty p{font-size:14px;margin-bottom:16px}
+.loading{display:flex;align-items:center;justify-content:center;padding:48px;color:var(--gray-400);font-size:13px;gap:8px}
+.spinner{width:16px;height:16px;border:2px solid var(--gray-200);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.quick-links{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.quick-link{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);cursor:pointer;transition:border-color .12s,box-shadow .12s;color:var(--gray-700);border:1px solid var(--gray-200)}
+.quick-link:hover{border-color:var(--blue);box-shadow:0 0 0 2px rgba(37,99,235,.1)}
+.ql-icon{width:32px;height:32px;background:var(--blue-light);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:15px;flex-shrink:0}
+.ql-name{font-weight:600;font-size:13px}
+.ql-count{font-size:11px;color:var(--gray-400);margin-top:1px}
+.two-col{display:grid;grid-template-columns:1fr 240px;gap:20px;align-items:start}
+.action-cell{display:flex;align-items:center;gap:6px}
+@media(max-width:640px){#sidebar{display:none}.two-col{grid-template-columns:1fr}#content{padding:16px}.stat-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="sb-logo">Drafthaus<span>Admin Panel</span></div>
+    <div id="sb-nav"></div>
+  </aside>
+  <div id="main">
+    <div id="topbar">
+      <h1 id="topbar-title" style="font-size:15px;font-weight:600;flex:1">Dashboard</h1>
+      <a href="/" target="_blank" class="btn btn-secondary btn-sm">View Site</a>
+    </div>
+    <div id="content"></div>
+  </div>
+</div>
+<div id="toast"></div>
+<script>
+'use strict';
+
+// ── State ──────────────────────────────────────────────────────────────────────
+const state = { types: [] };
+
+// ── API ────────────────────────────────────────────────────────────────────────
+const api = {
+  async _req(method, path, body) {
+    const opts = { method, headers: {} };
+    if (body !== undefined) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+    const res = await fetch('/_api' + path, opts);
+    if (res.status === 204) return null;
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
+    return data;
+  },
+  get: (path) => api._req('GET', path),
+  post: (path, data) => api._req('POST', path, data),
+  put: (path, data) => api._req('PUT', path, data),
+  delete: (path) => api._req('DELETE', path),
+};
+
+// ── DOM helpers ────────────────────────────────────────────────────────────────
+function el(tag, attrs, ...children) {
+  const e = document.createElement(tag);
+  if (attrs) Object.entries(attrs).forEach(([k,v]) => {
+    if (k === 'class') e.className = v;
+    else if (k === 'style') e.style.cssText = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (k === 'data') Object.entries(v).forEach(([dk,dv]) => e.dataset[dk] = dv);
+    else e.setAttribute(k, v);
+  });
+  children.flat().forEach(c => {
+    if (c == null || c === false) return;
+    e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  });
+  return e;
+}
+function txt(s) { return document.createTextNode(s == null ? '' : String(s)); }
+function frag(...children) {
+  const f = document.createDocumentFragment();
+  children.flat().forEach(c => { if (c) f.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+  return f;
+}
+function mount(id, node) {
+  const container = document.getElementById(id);
+  container.textContent = '';
+  container.appendChild(node);
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+function toast(msg, type) {
+  type = type || 'success';
+  const d = el('div', {class: 'toast-msg toast-' + type});
+  d.textContent = msg;
+  document.getElementById('toast').appendChild(d);
+  setTimeout(() => d.remove(), 3200);
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function fmtDate(ms) {
+  if (!ms) return '—';
+  return new Date(ms).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+}
+function slugify(s) {
+  return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+function statusBadge(status) {
+  const cls = {draft:'badge-draft', published:'badge-published', archived:'badge-archived'};
+  return el('span', {class: 'badge ' + (cls[status] || 'badge-draft')}, status || 'draft');
+}
+function spinner() {
+  const d = el('div', {class: 'loading'});
+  d.appendChild(el('div', {class: 'spinner'}));
+  d.appendChild(txt(' Loading…'));
+  return d;
+}
+
+// ── Router ─────────────────────────────────────────────────────────────────────
+function navigate(hash) { location.hash = hash; }
+function parseRoute() {
+  const h = location.hash.replace(/^#\/?/, '');
+  if (!h || h === 'dashboard') return {view:'dashboard'};
+  const p = h.split('/');
+  if (p[0] === 'settings') return {view:'settings', tab: p[1] || 'tokens'};
+  if (p[0] === 'types' && p[1]) {
+    if (p[2] === 'edit') return {view:'editor', typeSlug:p[1], entitySlug: p[3] !== 'new' ? p[3] : null};
+    return {view:'list', typeSlug:p[1]};
+  }
+  return {view:'dashboard'};
+}
+
+// ── Sidebar ────────────────────────────────────────────────────────────────────
+function renderSidebar() {
+  const route = parseRoute();
+  const nav = document.getElementById('sb-nav');
+  nav.textContent = '';
+
+  // Dashboard
+  const dashSec = el('div', {class:'sb-section'});
+  const dashBtn = el('button', {
+    class: 'sb-item' + (route.view === 'dashboard' ? ' active' : ''),
+    onclick: () => navigate('#/dashboard'),
+  });
+  dashBtn.appendChild(svgGrid());
+  dashBtn.appendChild(txt(' Dashboard'));
+  dashSec.appendChild(dashBtn);
+  nav.appendChild(dashSec);
+
+  // Content types
+  if (state.types.length > 0) {
+    const sec = el('div', {class:'sb-section'});
+    sec.appendChild(el('div', {class:'sb-label'}, 'Content'));
+    state.types.forEach(t => {
+      const active = (route.view === 'list' || route.view === 'editor') && route.typeSlug === t.slug;
+      const btn = el('button', {
+        class: 'sb-item' + (active ? ' active' : ''),
+        onclick: () => navigate('#/types/' + t.slug),
+      });
+      btn.appendChild(svgDoc());
+      btn.appendChild(txt(' ' + t.name));
+      sec.appendChild(btn);
+    });
+    nav.appendChild(sec);
+  }
+
+  // Settings
+  const bottom = el('div', {class:'sb-section', style:'margin-top:auto'});
+  const settBtn = el('button', {
+    class: 'sb-item' + (route.view === 'settings' ? ' active' : ''),
+    onclick: () => navigate('#/settings'),
+  });
+  settBtn.appendChild(svgSettings());
+  settBtn.appendChild(txt(' Settings'));
+  bottom.appendChild(settBtn);
+  nav.appendChild(bottom);
+}
+
+// SVG icons
+function svgGrid() {
+  const s = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  s.setAttribute('width','14');s.setAttribute('height','14');s.setAttribute('viewBox','0 0 16 16');s.setAttribute('fill','currentColor');
+  ['1 1 6 6','9 1 6 6','1 9 6 6','9 9 6 6'].forEach(d => {
+    const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    const [x,y,w,h] = d.split(' ');
+    r.setAttribute('x',x);r.setAttribute('y',y);r.setAttribute('width',w);r.setAttribute('height',h);r.setAttribute('rx','1');
+    s.appendChild(r);
+  });
+  return s;
+}
+function svgDoc() {
+  const s = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  s.setAttribute('width','14');s.setAttribute('height','14');s.setAttribute('viewBox','0 0 16 16');s.setAttribute('fill','currentColor');
+  ['2 2 12 2 1','2 6 8 2 1','2 10 10 2 1','2 14 6 2 1'].forEach(d => {
+    const [x,y,w,h,rx] = d.split(' ');
+    const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    r.setAttribute('x',x);r.setAttribute('y',y);r.setAttribute('width',w);r.setAttribute('height',h);r.setAttribute('rx',rx);
+    s.appendChild(r);
+  });
+  return s;
+}
+function svgSettings() {
+  const s = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  s.setAttribute('width','14');s.setAttribute('height','14');s.setAttribute('viewBox','0 0 20 20');s.setAttribute('fill','currentColor');
+  const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+  p.setAttribute('fill-rule','evenodd');
+  p.setAttribute('d','M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z');
+  p.setAttribute('clip-rule','evenodd');
+  s.appendChild(p);
+  return s;
+}
+
+// ── Dashboard ──────────────────────────────────────────────────────────────────
+async function renderDashboard() {
+  document.getElementById('topbar-title').textContent = 'Dashboard';
+  mount('content', spinner());
+
+  try {
+    const typeStats = await Promise.all(state.types.map(async t => {
+      try {
+        const r = await api.get('/entities/' + t.slug);
+        const entities = r.entities || [];
+        return { type: t, total: r.total || entities.length, published: entities.filter(e => e.status === 'published').length };
+      } catch { return { type: t, total: 0, published: 0 }; }
+    }));
+
+    const totalEntities = typeStats.reduce((a,s) => a + s.total, 0);
+    const totalPublished = typeStats.reduce((a,s) => a + s.published, 0);
+
+    const wrap = el('div');
+
+    // Stats
+    const statGrid = el('div', {class:'stat-grid'});
+    [['Entity Types', state.types.length], ['Total Entries', totalEntities], ['Published', totalPublished]].forEach(([label, value]) => {
+      const c = el('div', {class:'stat-card'});
+      c.appendChild(el('div', {class:'label'}, label));
+      c.appendChild(el('div', {class:'value'}, String(value)));
+      statGrid.appendChild(c);
+    });
+    wrap.appendChild(statGrid);
+
+    // Quick links
+    const card = el('div', {class:'card'});
+    const header = el('div', {class:'card-header'});
+    header.appendChild(el('h2', null, 'Content Types'));
+    card.appendChild(header);
+    const body = el('div', {class:'card-body'});
+
+    if (typeStats.length === 0) {
+      const empty = el('div', {class:'empty'});
+      empty.appendChild(el('p', null, 'No content types yet. Create your first type in Settings.'));
+      const btn = el('button', {class:'btn btn-primary', onclick: () => navigate('#/settings/types')}, 'Go to Settings');
+      empty.appendChild(btn);
+      body.appendChild(empty);
+    } else {
+      const ql = el('div', {class:'quick-links'});
+      typeStats.forEach(s => {
+        const link = el('div', {class:'quick-link', onclick: () => navigate('#/types/' + s.type.slug)});
+        const icon = el('div', {class:'ql-icon'});
+        icon.textContent = s.type.icon || s.type.name.charAt(0).toUpperCase();
+        link.appendChild(icon);
+        const text = el('div');
+        text.appendChild(el('div', {class:'ql-name'}, s.type.name));
+        text.appendChild(el('div', {class:'ql-count'}, s.total + ' total · ' + s.published + ' published'));
+        link.appendChild(text);
+        ql.appendChild(link);
+      });
+      body.appendChild(ql);
+    }
+    card.appendChild(body);
+    wrap.appendChild(card);
+    mount('content', wrap);
+  } catch (e) {
+    const c = el('div', {class:'card'});
+    const b = el('div', {class:'card-body'});
+    b.appendChild(el('p', {style:'color:var(--red)'}, 'Error: ' + e.message));
+    c.appendChild(b); mount('content', c);
+  }
+}
+
+// ── Entity List ────────────────────────────────────────────────────────────────
+async function renderEntityList(typeSlug) {
+  const type = state.types.find(t => t.slug === typeSlug);
+  const typeName = type ? type.name : typeSlug;
+  document.getElementById('topbar-title').textContent = typeName;
+  renderSidebar();
+  mount('content', spinner());
+
+  try {
+    const result = await api.get('/entities/' + typeSlug);
+    const entities = result.entities || [];
+
+    const card = el('div', {class:'card'});
+    const header = el('div', {class:'card-header'});
+    header.appendChild(el('h2', null, typeName));
+    const newBtn = el('button', {class:'btn btn-primary btn-sm', onclick: () => navigate('#/types/' + typeSlug + '/edit/new')}, '+ New Entry');
+    header.appendChild(newBtn);
+    card.appendChild(header);
+
+    if (entities.length === 0) {
+      const body = el('div', {class:'card-body'});
+      const empty = el('div', {class:'empty'});
+      empty.appendChild(el('p', null, 'No entries yet.'));
+      empty.appendChild(el('button', {class:'btn btn-primary', onclick: () => navigate('#/types/' + typeSlug + '/edit/new')}, 'Create First Entry'));
+      body.appendChild(empty);
+      card.appendChild(body);
+    } else {
+      const wrap = el('div', {class:'table-wrap'});
+      const table = el('table');
+      const thead = el('thead');
+      const tr = el('tr');
+      ['Title / Slug', 'Status', 'Updated', ''].forEach(h => tr.appendChild(el('th', null, h)));
+      thead.appendChild(tr); table.appendChild(thead);
+
+      const tbody = el('tbody');
+      entities.forEach(e => {
+        const title = (e.data && (e.data.title || e.data.name)) || e.slug || e.id;
+        const row = el('tr', {onclick: () => navigate('#/types/' + typeSlug + '/edit/' + e.slug)});
+        const titleCell = el('td');
+        titleCell.appendChild(el('div', {style:'font-weight:500'}, title));
+        titleCell.appendChild(el('div', {style:'font-size:11px;color:var(--gray-400)'}, e.slug));
+        row.appendChild(titleCell);
+        const statusCell = el('td');
+        statusCell.appendChild(statusBadge(e.status));
+        row.appendChild(statusCell);
+        row.appendChild(el('td', {style:'color:var(--gray-400);white-space:nowrap'}, fmtDate(e.updated_at)));
+        const actionCell = el('td');
+        const actions = el('div', {class:'action-cell'});
+        actions.addEventListener('click', ev => ev.stopPropagation());
+        actions.appendChild(el('button', {class:'btn btn-secondary btn-sm', onclick: () => navigate('#/types/' + typeSlug + '/edit/' + e.slug)}, 'Edit'));
+        actions.appendChild(el('button', {class:'btn btn-danger btn-sm', onclick: () => confirmDelete(typeSlug, e.slug, title)}, 'Delete'));
+        actionCell.appendChild(actions);
+        row.appendChild(actionCell);
+        tbody.appendChild(row);
+      });
+      table.appendChild(tbody);
+      wrap.appendChild(table);
+      card.appendChild(wrap);
+    }
+    mount('content', card);
+  } catch (e) {
+    const c = el('div', {class:'card'});
+    c.appendChild(el('div', {class:'card-body'}, el('p', {style:'color:var(--red)'}, 'Error: ' + e.message)));
+    mount('content', c);
+  }
+}
+
+async function confirmDelete(typeSlug, entitySlug, title) {
+  if (!confirm('Delete "' + title + '"? This cannot be undone.')) return;
+  try {
+    await api.delete('/entities/' + typeSlug + '/' + entitySlug);
+    toast('Entry deleted');
+    renderEntityList(typeSlug);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Entity Editor ──────────────────────────────────────────────────────────────
+const editorState = { typeSlug:null, entitySlug:null, entity:null, type:null, blocks:{} };
+const BLOCK_TYPES = ['paragraph','heading','code','image','callout','list','quote'];
+
+async function renderEntityEditor(typeSlug, entitySlug) {
+  const isNew = !entitySlug;
+  const type = state.types.find(t => t.slug === typeSlug);
+  document.getElementById('topbar-title').textContent = type ? type.name : typeSlug;
+  renderSidebar();
+  mount('content', spinner());
+
+  editorState.typeSlug = typeSlug;
+  editorState.entitySlug = entitySlug;
+  editorState.type = type;
+  editorState.blocks = {};
+
+  let entity = { data:{}, status:'draft', slug:'' };
+  if (!isNew) {
+    try { entity = await api.get('/entities/' + typeSlug + '/' + entitySlug); }
+    catch (e) {
+      const c = el('div', {class:'card'});
+      c.appendChild(el('div', {class:'card-body'}, el('p', {style:'color:var(--red)'}, 'Error: ' + e.message)));
+      mount('content', c); return;
+    }
+  }
+  editorState.entity = entity;
+
+  // Load blocks
+  const fields = (type && type.fields) ? type.fields : [];
+  if (!isNew) {
+    for (const f of fields) {
+      if (f.type === 'richtext') {
+        try { editorState.blocks[f.name] = await api.get('/entities/' + typeSlug + '/' + entitySlug + '/blocks/' + f.name); }
+        catch { editorState.blocks[f.name] = []; }
+      }
+    }
+  }
+
+  const wrap = el('div');
+
+  // Breadcrumb
+  const bc = el('div', {class:'breadcrumb'});
+  const backBtn = el('button', {class:'breadcrumb-link', onclick: () => navigate('#/types/' + typeSlug)}, '← ' + (type ? type.name : typeSlug));
+  bc.appendChild(backBtn);
+  bc.appendChild(el('span', null, ' / '));
+  bc.appendChild(txt(isNew ? 'New Entry' : ((entity.data && entity.data.title) || entity.slug || 'Edit')));
+  wrap.appendChild(bc);
+
+  const grid = el('div', {class:'two-col'});
+
+  // Left: content fields
+  const leftCard = el('div', {class:'card'});
+  leftCard.appendChild(el('div', {class:'card-header'}, el('h2', null, 'Content')));
+  const leftBody = el('div', {class:'card-body'});
+  const formGrid = el('div', {class:'form-grid'});
+
+  if (fields.length === 0) {
+    formGrid.appendChild(el('p', {style:'color:var(--gray-400);font-size:13px'}, 'No fields defined for this type.'));
+  } else {
+    fields.forEach(f => formGrid.appendChild(buildFieldInput(f, entity.data ? entity.data[f.name] : undefined)));
+  }
+
+  leftBody.appendChild(formGrid);
+  leftCard.appendChild(leftBody);
+  grid.appendChild(leftCard);
+
+  // Right: meta panel
+  const rightCol = el('div');
+
+  const metaCard = el('div', {class:'card', style:'margin-bottom:12px'});
+  const metaBody = el('div', {class:'card-body'});
+
+  const statusGroup = el('div', {class:'form-group', style:'margin-bottom:12px'});
+  statusGroup.appendChild(el('label', null, 'Status'));
+  const statusSel = el('select', {id:'f-status'});
+  ['draft','published','archived'].forEach(s => {
+    const opt = el('option', {value:s});
+    opt.textContent = s;
+    if (entity.status === s) opt.selected = true;
+    statusSel.appendChild(opt);
+  });
+  statusGroup.appendChild(statusSel);
+  metaBody.appendChild(statusGroup);
+
+  const slugGroup = el('div', {class:'form-group'});
+  slugGroup.appendChild(el('label', null, 'Slug'));
+  const slugInput = el('input', {type:'text', id:'f-slug', placeholder:'auto-generated'});
+  slugInput.value = entity.slug || '';
+  slugInput.addEventListener('input', () => { slugInput.dataset.manual = '1'; });
+  slugGroup.appendChild(slugInput);
+  slugGroup.appendChild(el('div', {class:'hint'}, 'URL-friendly identifier'));
+  metaBody.appendChild(slugGroup);
+  metaCard.appendChild(metaBody);
+  rightCol.appendChild(metaCard);
+
+  const saveBtn = el('button', {class:'btn btn-primary', style:'width:100%', onclick: saveEntity}, 'Save');
+  rightCol.appendChild(saveBtn);
+
+  if (!isNew) {
+    const delBtn = el('button', {class:'btn btn-danger', style:'width:100%;margin-top:8px',
+      onclick: () => confirmDelete(typeSlug, entitySlug, (entity.data && entity.data.title) || entity.slug)
+    }, 'Delete Entry');
+    rightCol.appendChild(delBtn);
+  }
+
+  grid.appendChild(rightCol);
+  wrap.appendChild(grid);
+  mount('content', wrap);
+
+  // Auto-slug from title
+  const titleInput = document.getElementById('field-title');
+  if (titleInput) {
+    titleInput.addEventListener('input', () => {
+      if (!slugInput.dataset.manual) slugInput.value = slugify(titleInput.value);
+    });
+  }
+
+  // Render block editors
+  fields.forEach(f => {
+    if (f.type === 'richtext') renderBlockEditor(f.name, editorState.blocks[f.name] || []);
+  });
+}
+
+function buildFieldInput(f, value) {
+  const group = el('div', {class:'form-group'});
+  const lbl = el('label', {for:'field-' + f.name});
+  lbl.textContent = f.name;
+  if (f.required) {
+    const star = el('span', {style:'color:var(--red)'}, ' *');
+    lbl.appendChild(star);
+  }
+  group.appendChild(lbl);
+
+  let input;
+  switch (f.type) {
+    case 'text': case 'slug':
+      input = el('input', {type:'text', id:'field-' + f.name, name:f.name, placeholder:f.name});
+      input.value = value || '';
+      break;
+    case 'email':
+      input = el('input', {type:'email', id:'field-' + f.name, name:f.name});
+      input.value = value || '';
+      break;
+    case 'url':
+      input = el('input', {type:'url', id:'field-' + f.name, name:f.name});
+      input.value = value || '';
+      break;
+    case 'number': case 'currency':
+      input = el('input', {type:'number', id:'field-' + f.name, name:f.name});
+      input.value = value != null ? value : '';
+      break;
+    case 'datetime':
+      input = el('input', {type:'datetime-local', id:'field-' + f.name, name:f.name});
+      if (value) { try { input.value = new Date(value).toISOString().slice(0,16); } catch {} }
+      break;
+    case 'date':
+      input = el('input', {type:'date', id:'field-' + f.name, name:f.name});
+      if (value) { try { input.value = new Date(value).toISOString().slice(0,10); } catch {} }
+      break;
+    case 'boolean': {
+      const cg = el('div', {class:'checkbox-group'});
+      const cb = el('input', {type:'checkbox', id:'field-' + f.name, name:f.name});
+      if (value) cb.checked = true;
+      cg.appendChild(cb);
+      cg.appendChild(el('label', {for:'field-' + f.name, style:'font-weight:normal;font-size:13px'}, 'Enabled'));
+      group.appendChild(cg);
+      return group;
+    }
+    case 'enum': {
+      const sel = el('select', {id:'field-' + f.name, name:f.name});
+      sel.appendChild(el('option', {value:''}, '— select —'));
+      (f.values || []).forEach(v => {
+        const opt = el('option', {value:v});
+        opt.textContent = v;
+        if (value === v) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      group.appendChild(sel);
+      group.appendChild(el('div', {class:'hint'}, 'enum'));
+      return group;
+    }
+    case 'richtext': {
+      const editorWrap = el('div', {class:'block-editor', id:'block-editor-' + f.name});
+      const toolbar = el('div', {class:'block-toolbar'});
+      toolbar.appendChild(el('span', {style:'font-size:12px;color:var(--gray-400)'}, 'Block Editor'));
+      const addBtn = el('button', {class:'btn btn-secondary btn-sm', style:'margin-left:auto',
+        onclick: (ev) => showBlockTypeMenu(f.name, ev.currentTarget)
+      }, '+ Add Block');
+      toolbar.appendChild(addBtn);
+      editorWrap.appendChild(toolbar);
+      editorWrap.appendChild(el('div', {class:'block-list', id:'blocks-' + f.name},
+        el('div', {style:'color:var(--gray-400);padding:16px;text-align:center;font-size:13px'}, 'No blocks yet.')
+      ));
+      group.appendChild(editorWrap);
+      return group;
+    }
+    case 'json': {
+      const ta = el('textarea', {id:'field-' + f.name, name:f.name, style:'font-family:monospace;font-size:12px'});
+      ta.value = value != null ? JSON.stringify(value, null, 2) : '';
+      group.appendChild(ta);
+      group.appendChild(el('div', {class:'hint'}, 'json'));
+      return group;
+    }
+    default:
+      input = el('input', {type:'text', id:'field-' + f.name, name:f.name});
+      input.value = value || '';
+  }
+
+  group.appendChild(input);
+  group.appendChild(el('div', {class:'hint'}, f.type));
+  return group;
+}
+
+// ── Block Editor ───────────────────────────────────────────────────────────────
+function renderBlockEditor(fieldName, blocks) {
+  if (!editorState.blocks[fieldName]) editorState.blocks[fieldName] = blocks || [];
+  const bl = editorState.blocks[fieldName];
+  const container = document.getElementById('blocks-' + fieldName);
+  if (!container) return;
+  container.textContent = '';
+
+  if (bl.length === 0) {
+    container.appendChild(el('div', {style:'color:var(--gray-400);padding:16px;text-align:center;font-size:13px'}, 'No blocks yet. Click "+ Add Block" to start.'));
+    return;
+  }
+
+  bl.forEach((b, i) => container.appendChild(buildBlockItem(b, i, fieldName)));
+}
+
+function buildBlockItem(b, i, fieldName) {
+  const item = el('div', {class:'block-item'});
+  const drag = el('div', {style:'cursor:grab;color:var(--gray-300);padding:4px;align-self:flex-start;margin-top:4px;font-size:16px;user-select:none'}, '⠿');
+  item.appendChild(drag);
+
+  const body = el('div', {class:'block-body'});
+  const typebar = el('div', {class:'block-type-bar'});
+  typebar.appendChild(el('span', {class:'block-type-label'}, b.type));
+
+  if (b.type === 'heading') {
+    const lvlSel = el('select', {style:'padding:2px 4px;font-size:11px;border:1px solid var(--gray-200);border-radius:3px'});
+    [1,2,3,4,5,6].forEach(n => {
+      const opt = el('option', {value:String(n)});
+      opt.textContent = 'H' + n;
+      if ((b.data && b.data.level) === n) opt.selected = true;
+      lvlSel.appendChild(opt);
+    });
+    lvlSel.addEventListener('change', () => updateBlockField(fieldName, i, 'level', +lvlSel.value));
+    typebar.appendChild(lvlSel);
+  }
+  if (b.type === 'code') {
+    const langInput = el('input', {type:'text', placeholder:'language', style:'width:80px;padding:2px 6px;font-size:11px;border:1px solid var(--gray-200);border-radius:3px'});
+    langInput.value = (b.data && b.data.language) || '';
+    langInput.addEventListener('change', () => updateBlockField(fieldName, i, 'language', langInput.value));
+    typebar.appendChild(langInput);
+  }
+
+  const actions = el('div', {style:'display:flex;gap:4px;margin-left:auto'});
+  const upBtn = el('button', {class:'icon-btn', title:'Move up'}, '↑');
+  if (i === 0) upBtn.disabled = true;
+  upBtn.addEventListener('click', () => moveBlock(fieldName, i, -1));
+  const dnBtn = el('button', {class:'icon-btn', title:'Move down'}, '↓');
+  dnBtn.addEventListener('click', () => moveBlock(fieldName, i, 1));
+  const delBtn = el('button', {class:'icon-btn', title:'Delete', style:'color:var(--red)'}, '✕');
+  delBtn.addEventListener('click', () => removeBlock(fieldName, i));
+  actions.append(upBtn, dnBtn, delBtn);
+  typebar.appendChild(actions);
+  body.appendChild(typebar);
+
+  const contentKey = b.type === 'image' ? 'src' : b.type === 'code' ? 'content' : 'text';
+  const placeholder = b.type === 'image' ? 'Image URL' : b.type === 'code' ? 'Code here…' : 'Type here…';
+  const ta = el('textarea', {style:'width:100%;' + (b.type === 'code' ? 'font-family:monospace;font-size:12px;' : ''), rows:b.type==='code'?'5':'3', placeholder});
+  ta.value = (b.data && (b.data[contentKey] || '')) || '';
+  ta.addEventListener('input', () => updateBlockField(fieldName, i, contentKey, ta.value));
+  body.appendChild(ta);
+  item.appendChild(body);
+  return item;
+}
+
+function showBlockTypeMenu(fieldName, anchor) {
+  const existing = document.getElementById('block-type-menu');
+  if (existing) { existing.remove(); return; }
+  const menu = el('div', {id:'block-type-menu', style:'position:fixed;background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:var(--shadow-md);z-index:500;min-width:140px;padding:4px 0'});
+  const rect = anchor.getBoundingClientRect();
+  menu.style.top = (rect.bottom + 4) + 'px';
+  menu.style.left = rect.left + 'px';
+  BLOCK_TYPES.forEach(t => {
+    const item = el('button', {style:'display:block;width:100%;text-align:left;padding:7px 14px;font-size:13px;border:none;background:none;cursor:pointer'});
+    item.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+    item.addEventListener('mouseover', () => item.style.background = 'var(--gray-50)');
+    item.addEventListener('mouseout', () => item.style.background = 'none');
+    item.addEventListener('click', () => { addBlock(fieldName, t); menu.remove(); });
+    menu.appendChild(item);
+  });
+  document.body.appendChild(menu);
+  setTimeout(() => {
+    document.addEventListener('click', function h(e) {
+      if (!menu.contains(e.target) && e.target !== anchor) { menu.remove(); document.removeEventListener('click', h); }
+    });
+  }, 0);
+}
+
+function addBlock(fieldName, type) {
+  if (!editorState.blocks[fieldName]) editorState.blocks[fieldName] = [];
+  editorState.blocks[fieldName].push({
+    id: 'b' + Date.now(),
+    type,
+    data: type === 'heading' ? {text:'',level:2} : type === 'code' ? {content:'',language:''} : {text:''},
+    position: editorState.blocks[fieldName].length,
+  });
+  renderBlockEditor(fieldName, editorState.blocks[fieldName]);
+}
+
+function removeBlock(fieldName, index) {
+  editorState.blocks[fieldName].splice(index, 1);
+  renderBlockEditor(fieldName, editorState.blocks[fieldName]);
+}
+
+function moveBlock(fieldName, index, dir) {
+  const bl = editorState.blocks[fieldName];
+  const ni = index + dir;
+  if (ni < 0 || ni >= bl.length) return;
+  [bl[index], bl[ni]] = [bl[ni], bl[index]];
+  renderBlockEditor(fieldName, bl);
+}
+
+function updateBlockField(fieldName, index, key, value) {
+  const bl = editorState.blocks[fieldName];
+  if (!bl[index]) return;
+  if (!bl[index].data) bl[index].data = {};
+  bl[index].data[key] = value;
+}
+
+// ── Save Entity ────────────────────────────────────────────────────────────────
+async function saveEntity() {
+  const { typeSlug, entitySlug, type, entity } = editorState;
+  const isNew = !entitySlug;
+  const data = {};
+
+  if (type && type.fields) {
+    type.fields.forEach(f => {
+      if (f.type === 'richtext') return;
+      const inp = document.getElementById('field-' + f.name);
+      if (!inp) return;
+      if (f.type === 'boolean') data[f.name] = inp.checked;
+      else if (f.type === 'number' || f.type === 'currency') data[f.name] = inp.value !== '' ? Number(inp.value) : null;
+      else if (f.type === 'json') { try { data[f.name] = JSON.parse(inp.value); } catch { data[f.name] = inp.value; } }
+      else data[f.name] = inp.value;
+    });
+  }
+
+  const slugEl = document.getElementById('f-slug');
+  const slug = (slugEl.value.trim()) || slugify(data.title || data.name || '') || ('entry-' + Date.now());
+  const status = document.getElementById('f-status').value;
+  const payload = Object.assign({}, entity, { data, slug, status });
+
+  try {
+    const saved = isNew
+      ? await api.post('/entities/' + typeSlug, payload)
+      : await api.put('/entities/' + typeSlug + '/' + entitySlug, payload);
+
+    if (type && type.fields) {
+      for (const f of type.fields) {
+        if (f.type !== 'richtext') continue;
+        const blocks = (editorState.blocks[f.name] || []).map((b,i) => Object.assign({}, b, {position:i, entity_id:saved.id}));
+        try { await api.put('/entities/' + typeSlug + '/' + saved.slug + '/blocks/' + f.name, blocks); }
+        catch (e) { toast('Warning: blocks for ' + f.name + ': ' + e.message, 'error'); }
+      }
+    }
+    toast(isNew ? 'Entry created' : 'Entry saved');
+    if (isNew) navigate('#/types/' + typeSlug + '/edit/' + saved.slug);
+    else renderEntityEditor(typeSlug, saved.slug);
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────────
+let settingsTab = 'tokens';
+let editingType = null;
+
+async function renderSettings(tab) {
+  settingsTab = tab || settingsTab;
+  document.getElementById('topbar-title').textContent = 'Settings';
+  renderSidebar();
+  mount('content', spinner());
+
+  const wrap = el('div');
+  const tabs = el('div', {class:'tabs'});
+  ['tokens','types'].forEach(t => {
+    const btn = el('button', {class:'tab' + (settingsTab===t?' active':'')});
+    btn.textContent = t === 'tokens' ? 'Design Tokens' : 'Content Types';
+    btn.addEventListener('click', () => navigate('#/settings/' + t));
+    tabs.appendChild(btn);
+  });
+  wrap.appendChild(tabs);
+
+  if (settingsTab === 'tokens') {
+    await buildTokensTab(wrap);
+  } else {
+    await buildTypesTab(wrap);
+  }
+
+  mount('content', wrap);
+
+  if (settingsTab === 'types' && editingType) renderTypeEditor(editingType);
+}
+
+async function buildTokensTab(wrap) {
+  let tokens = {}, scale = {}, fonts = {};
+  try {
+    const ts = await api.get('/tokens');
+    tokens = (ts && ts.data && ts.data.colors) ? ts.data : {};
+    fonts = (ts && ts.data && ts.data.fonts) || {};
+    scale = (ts && ts.data && ts.data.scale) || {};
+    if (ts && ts.data) tokens = ts.data;
+  } catch {}
+
+  const colors = (tokens.colors) || {};
+  const fontsData = fonts || tokens.fonts || {};
+  const scaleData = scale || tokens.scale || {};
+
+  const card = el('div', {class:'card'});
+  const body = el('div', {class:'card-body'});
+
+  // Colors
+  body.appendChild(el('div', {class:'section-title'}, 'Colors'));
+  const defaultColors = {primary:'#2563eb', background:'#ffffff', text:'#1e293b', accent:'#7c3aed', muted:'#94a3b8'};
+  const allColors = Object.assign({}, defaultColors, colors);
+  Object.entries(allColors).forEach(([k, v]) => {
+    const g = el('div', {class:'form-group', style:'margin-bottom:10px'});
+    g.appendChild(el('label', null, k));
+    const row = el('div', {class:'color-row'});
+    const picker = el('input', {type:'color', id:'color-pick-' + k});
+    picker.value = v || '#000000';
+    const text = el('input', {type:'text', id:'color-text-' + k});
+    text.value = v || '#000000';
+    text.dataset.colorKey = k;
+    picker.addEventListener('input', () => { text.value = picker.value; });
+    text.addEventListener('input', () => { if (/^#[0-9a-f]{6}$/i.test(text.value)) picker.value = text.value; });
+    row.append(picker, text);
+    g.appendChild(row);
+    body.appendChild(g);
+  });
+
+  // Fonts
+  body.appendChild(el('div', {class:'section-title', style:'margin-top:20px'}, 'Fonts'));
+  const fontRow = el('div', {class:'token-row'});
+  [['font-body','Body Font', fontsData.body||'system-ui'], ['font-heading','Heading Font', fontsData.heading||'']].forEach(([id,lbl,val]) => {
+    const g = el('div', {class:'form-group'});
+    g.appendChild(el('label', null, lbl));
+    const inp = el('input', {type:'text', id});
+    inp.value = val;
+    g.appendChild(inp);
+    fontRow.appendChild(g);
+  });
+  body.appendChild(fontRow);
+  const fontRow2 = el('div', {class:'token-row'});
+  const mg = el('div', {class:'form-group'});
+  mg.appendChild(el('label', null, 'Mono Font'));
+  const mi = el('input', {type:'text', id:'font-mono'});
+  mi.value = fontsData.mono || '';
+  mg.appendChild(mi);
+  fontRow2.appendChild(mg);
+  body.appendChild(fontRow2);
+
+  // Scale
+  body.appendChild(el('div', {class:'section-title', style:'margin-top:20px'}, 'Scale'));
+  const scaleRow = el('div', {class:'token-row'});
+  const spg = el('div', {class:'form-group'});
+  spg.appendChild(el('label', null, 'Spacing'));
+  const spI = el('input', {type:'number', id:'scale-spacing', step:'0.1', min:'0.5', max:'2'});
+  spI.value = scaleData.spacing || 1;
+  spg.appendChild(spI);
+  const radG = el('div', {class:'form-group'});
+  radG.appendChild(el('label', null, 'Radius'));
+  const radSel = el('select', {id:'scale-radius'});
+  ['none','sm','md','lg','xl','full'].forEach(v => {
+    const o = el('option', {value:v});
+    o.textContent = v;
+    if (scaleData.radius === v) o.selected = true;
+    radSel.appendChild(o);
+  });
+  radG.appendChild(radSel);
+  scaleRow.append(spg, radG);
+  body.appendChild(scaleRow);
+
+  const scaleRow2 = el('div', {class:'token-row'});
+  const denG = el('div', {class:'form-group'});
+  denG.appendChild(el('label', null, 'Density'));
+  const denSel = el('select', {id:'scale-density'});
+  ['compact','normal','comfortable'].forEach(v => {
+    const o = el('option', {value:v});
+    o.textContent = v;
+    if (scaleData.density === v) o.selected = true;
+    denSel.appendChild(o);
+  });
+  denG.appendChild(denSel);
+  const moodG = el('div', {class:'form-group'});
+  moodG.appendChild(el('label', null, 'Mood'));
+  const moodSel = el('select', {id:'scale-mood'});
+  ['clean','warm','bold','minimal'].forEach(v => {
+    const o = el('option', {value:v});
+    o.textContent = v;
+    if ((tokens.mood) === v) o.selected = true;
+    moodSel.appendChild(o);
+  });
+  moodG.appendChild(moodSel);
+  scaleRow2.append(denG, moodG);
+  body.appendChild(scaleRow2);
+
+  const saveBtn = el('button', {class:'btn btn-primary', style:'margin-top:20px', onclick: saveTokens}, 'Save Tokens');
+  body.appendChild(saveBtn);
+  card.appendChild(body);
+  wrap.appendChild(card);
+}
+
+async function saveTokens() {
+  const colors = {};
+  document.querySelectorAll('[data-color-key]').forEach(inp => { colors[inp.dataset.colorKey] = inp.value; });
+  const tokens = {
+    colors,
+    fonts: {
+      body: document.getElementById('font-body').value,
+      heading: document.getElementById('font-heading').value,
+      mono: document.getElementById('font-mono').value,
+    },
+    scale: {
+      spacing: parseFloat(document.getElementById('scale-spacing').value) || 1,
+      radius: document.getElementById('scale-radius').value,
+      density: document.getElementById('scale-density').value,
+    },
+    mood: document.getElementById('scale-mood').value,
+  };
+  try {
+    await api.put('/tokens', { data: tokens });
+    toast('Design tokens saved');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Types management ───────────────────────────────────────────────────────────
+async function buildTypesTab(wrap) {
+  const grid = el('div', {style:'display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start'});
+
+  const listCard = el('div', {class:'card'});
+  const listHeader = el('div', {class:'card-header'});
+  listHeader.appendChild(el('h2', null, 'Content Types'));
+  const newTypeBtn = el('button', {class:'btn btn-primary btn-sm', onclick: startNewType}, '+ New Type');
+  listHeader.appendChild(newTypeBtn);
+  listCard.appendChild(listHeader);
+
+  const listBody = el('div', {class:'card-body'});
+  if (state.types.length === 0) {
+    listBody.appendChild(el('div', {class:'empty'}, el('p', null, 'No types yet.')));
+  } else {
+    const list = el('div');
+    state.types.forEach(t => {
+      const row = el('div', {class:'field-row', style:'cursor:pointer', onclick: () => editExistingType(t.slug)});
+      row.appendChild(el('span', {class:'fname'}, t.name));
+      row.appendChild(el('span', {class:'ftype'}, t.slug));
+      row.appendChild(el('span', {style:'font-size:11px;color:var(--gray-400)'}, ((t.fields||[]).length) + ' fields'));
+      const del = el('button', {class:'icon-btn', style:'color:var(--red);margin-left:auto'}, '✕');
+      del.addEventListener('click', ev => { ev.stopPropagation(); confirmDeleteType(t.slug, t.name); });
+      row.appendChild(del);
+      list.appendChild(row);
+    });
+    listBody.appendChild(list);
+  }
+  listCard.appendChild(listBody);
+  grid.appendChild(listCard);
+
+  const editorCard = el('div', {class:'card', id:'type-editor-panel'});
+  const editorHeader = el('div', {class:'card-header'});
+  editorHeader.appendChild(el('h2', {id:'type-editor-title'}, 'Select a Type'));
+  editorCard.appendChild(editorHeader);
+  editorCard.appendChild(el('div', {class:'card-body', id:'type-editor-body'},
+    el('p', {style:'color:var(--gray-400);font-size:13px'}, 'Select a type to edit, or create a new one.')
+  ));
+  grid.appendChild(editorCard);
+  wrap.appendChild(grid);
+}
+
+function startNewType() {
+  editingType = { id:'', name:'', slug:'', fields:[], icon:'' };
+  renderTypeEditor(editingType);
+}
+
+function editExistingType(slug) {
+  editingType = state.types.find(t => t.slug === slug) || null;
+  if (editingType) renderTypeEditor(editingType);
+}
+
+function renderTypeEditor(t) {
+  const isNew = !t.id;
+  const titleEl = document.getElementById('type-editor-title');
+  const bodyEl = document.getElementById('type-editor-body');
+  if (!titleEl || !bodyEl) return;
+
+  titleEl.textContent = isNew ? 'New Type' : 'Edit: ' + t.name;
+  bodyEl.textContent = '';
+
+  const formGrid = el('div', {class:'form-grid'});
+
+  const nameGroup = el('div', {class:'form-group'});
+  nameGroup.appendChild(el('label', null, 'Name'));
+  const nameInput = el('input', {type:'text', id:'type-name', placeholder:'Blog Posts'});
+  nameInput.value = t.name || '';
+  nameInput.addEventListener('input', () => {
+    const slugEl = document.getElementById('type-slug');
+    if (slugEl && !slugEl.dataset.manual) slugEl.value = slugify(nameInput.value);
+  });
+  nameGroup.appendChild(nameInput);
+  formGrid.appendChild(nameGroup);
+
+  const slugGroup = el('div', {class:'form-group'});
+  slugGroup.appendChild(el('label', null, 'Slug'));
+  const slugInput = el('input', {type:'text', id:'type-slug', placeholder:'blog-posts'});
+  slugInput.value = t.slug || '';
+  slugInput.addEventListener('input', () => { slugInput.dataset.manual = '1'; });
+  slugGroup.appendChild(slugInput);
+  formGrid.appendChild(slugGroup);
+
+  const iconGroup = el('div', {class:'form-group'});
+  iconGroup.appendChild(el('label', null, 'Icon (emoji or letter)'));
+  const iconInput = el('input', {type:'text', id:'type-icon', placeholder:'📝'});
+  iconInput.value = t.icon || '';
+  iconGroup.appendChild(iconInput);
+  formGrid.appendChild(iconGroup);
+
+  bodyEl.appendChild(formGrid);
+  bodyEl.appendChild(el('div', {class:'section-title', style:'margin-top:16px'}, 'Fields'));
+
+  const fieldList = el('div', {id:'type-fields-list'});
+  if (!t.fields || t.fields.length === 0) {
+    fieldList.appendChild(el('p', {style:'color:var(--gray-400);font-size:12px'}, 'No fields yet.'));
+  } else {
+    t.fields.forEach((f, i) => fieldList.appendChild(buildTypeFieldRow(f, i)));
+  }
+  bodyEl.appendChild(fieldList);
+
+  // Add field row
+  const addArea = el('div', {style:'margin-top:12px;padding:12px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius)'});
+  addArea.appendChild(el('div', {style:'font-size:12px;font-weight:600;margin-bottom:8px;color:var(--gray-600)'}, 'Add Field'));
+  const addRow = el('div', {style:'display:flex;gap:8px;flex-wrap:wrap'});
+  const fnInput = el('input', {type:'text', id:'new-field-name', placeholder:'field name', style:'flex:1;min-width:100px'});
+  const ftSel = el('select', {id:'new-field-type'});
+  ['text','richtext','number','currency','boolean','enum','email','url','datetime','date','slug','json','asset','relation'].forEach(v => {
+    const o = el('option', {value:v});
+    o.textContent = v;
+    ftSel.appendChild(o);
+  });
+  const reqLabel = el('label', {style:'display:flex;align-items:center;gap:4px;font-size:12px;white-space:nowrap'});
+  const reqCb = el('input', {type:'checkbox', id:'new-field-required'});
+  reqLabel.append(reqCb, txt(' Required'));
+  const addFieldBtn = el('button', {class:'btn btn-secondary btn-sm', onclick: addFieldToCurrentType}, 'Add');
+  addRow.append(fnInput, ftSel, reqLabel, addFieldBtn);
+  addArea.appendChild(addRow);
+  bodyEl.appendChild(addArea);
+
+  const btnRow = el('div', {style:'margin-top:16px;display:flex;gap:8px'});
+  btnRow.appendChild(el('button', {class:'btn btn-primary', onclick: () => saveTypeFromEditor(isNew)}, 'Save Type'));
+  if (!isNew) {
+    btnRow.appendChild(el('button', {class:'btn btn-danger', onclick: () => confirmDeleteType(t.slug, t.name)}, 'Delete'));
+  }
+  bodyEl.appendChild(btnRow);
+}
+
+function buildTypeFieldRow(f, i) {
+  const row = el('div', {class:'field-row'});
+  row.appendChild(el('span', {class:'fname'}, f.name));
+  row.appendChild(el('span', {class:'ftype'}, f.type));
+  if (f.required) row.appendChild(el('span', {style:'color:var(--red);font-size:11px'}, 'required'));
+  const del = el('button', {class:'icon-btn', style:'color:var(--red);margin-left:auto'}, '✕');
+  del.addEventListener('click', () => {
+    editingType.fields.splice(i, 1);
+    renderTypeEditor(editingType);
+  });
+  row.appendChild(del);
+  return row;
+}
+
+function addFieldToCurrentType() {
+  const name = document.getElementById('new-field-name').value.trim();
+  const type = document.getElementById('new-field-type').value;
+  const required = document.getElementById('new-field-required').checked;
+  if (!name) { toast('Field name is required', 'error'); return; }
+  if (!editingType.fields) editingType.fields = [];
+  editingType.fields.push({ name, type, required });
+  renderTypeEditor(editingType);
+}
+
+async function saveTypeFromEditor(isNew) {
+  const name = document.getElementById('type-name').value.trim();
+  const slug = document.getElementById('type-slug').value.trim() || slugify(name);
+  const icon = document.getElementById('type-icon').value.trim();
+  if (!name || !slug) { toast('Name and slug are required', 'error'); return; }
+  const payload = Object.assign({}, editingType, { name, slug, icon });
+  try {
+    if (isNew) { await api.post('/types', payload); toast('Type created'); }
+    else { await api.put('/types/' + editingType.slug, payload); toast('Type saved'); }
+    editingType = null;
+    await loadTypes();
+    renderSidebar();
+    renderSettings('types');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function confirmDeleteType(slug, name) {
+  if (!confirm('Delete type "' + name + '"? This will also delete all entries.')) return;
+  try {
+    await api.delete('/types/' + slug);
+    toast('Type deleted');
+    editingType = null;
+    await loadTypes();
+    renderSidebar();
+    renderSettings('types');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+async function loadTypes() {
+  try { state.types = await api.get('/types') || []; }
+  catch { state.types = []; }
+}
+
+async function route() {
+  const r = parseRoute();
+  renderSidebar();
+  switch (r.view) {
+    case 'dashboard': await renderDashboard(); break;
+    case 'list': await renderEntityList(r.typeSlug); break;
+    case 'editor': await renderEntityEditor(r.typeSlug, r.entitySlug); break;
+    case 'settings': await renderSettings(r.tab); break;
+    default: await renderDashboard();
+  }
+}
+
+async function init() {
+  await loadTypes();
+  renderSidebar();
+  window.addEventListener('hashchange', route);
+  await route();
+}
+
+init();
+</script>
+</body>
+</html>
