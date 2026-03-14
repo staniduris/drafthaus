@@ -83,7 +83,7 @@ func GenerateCSS(tokens *draft.Tokens) string {
 	b.WriteString(`*,*::before,*::after{box-sizing:border-box}
 body,h1,h2,h3,h4,h5,h6,p,figure,blockquote,dl,dd{margin:0}
 ul,ol{margin:0}
-html{line-height:1.5;-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+html{line-height:1.5;-webkit-text-size-adjust:100%;scroll-behavior:smooth;overflow-x:hidden}
 img,picture,video,canvas,svg{display:block;max-width:100%}
 input,button,textarea,select{font:inherit}
 `)
@@ -166,8 +166,9 @@ p{line-height:1.7}
 .dh-section:first-child{
   background:linear-gradient(135deg,var(--dh-color-text,#0F172A) 0%%,color-mix(in srgb,var(--dh-color-text,#0F172A),var(--dh-color-primary,#2563EB) 30%%) 100%%);
   color:var(--dh-color-background,#fff);
-  padding:5rem 2rem;
-  margin:0 0 2rem;
+  padding:8rem 2rem 5rem;
+  margin:-4rem calc(-50vw + 50%) 3rem;
+  width:100vw;
   text-align:center;
   position:relative;
   overflow:hidden;
@@ -485,15 +486,14 @@ p{line-height:1.7}
 
 `, colorVar("surface"), radius)
 
-	// ---- Site nav -----------------------------------------------------------
-	fmt.Fprintf(&b, `.dh-site-nav{
-  background:%s;
-  color:%s;
-  padding:0 1.5rem;
-  position:sticky;
-  top:0;
+	// ---- Site nav — floats over hero --------------------------------------
+	b.WriteString(`.dh-site-nav{
+  background:none;
+  color:#fff;
+  padding:0 2rem;
+  position:relative;
   z-index:100;
-  backdrop-filter:blur(8px);
+  margin-bottom:-4rem;
 }
 .dh-site-nav__inner{
   max-width:64rem;
@@ -501,7 +501,7 @@ p{line-height:1.7}
   display:flex;
   align-items:center;
   justify-content:space-between;
-  height:3.5rem;
+  height:4rem;
 }
 .dh-site-nav__brand{
   font-weight:800;
@@ -525,7 +525,7 @@ p{line-height:1.7}
 }
 .dh-site-nav__links a:hover{opacity:1}
 
-`, colorVar("text"), colorVar("background"))
+`)
 
 	// ---- Footer -------------------------------------------------------------
 	fmt.Fprintf(&b, `.dh-footer{
@@ -542,8 +542,7 @@ p{line-height:1.7}
 
 `, colorVar("text"))
 
-	b.WriteString(`.dh-site-nav{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-.dh-richtext{max-width:42rem}
+	b.WriteString(`.dh-richtext{max-width:42rem}
 
 `)
 
