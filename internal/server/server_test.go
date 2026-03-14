@@ -59,7 +59,7 @@ func setupTestServer(t *testing.T) http.Handler {
 	router := server.NewRouter()
 	router.BuildRoutes(store)
 	sessions := server.NewSessionStore()
-	handlers := server.NewHandlers(store, resolver, pipeline, router, sessions, nil)
+	handlers := server.NewHandlers(store, resolver, pipeline, router, sessions, nil, nil, nil)
 
 	return handlers
 }

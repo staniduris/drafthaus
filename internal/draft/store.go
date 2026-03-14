@@ -75,7 +75,35 @@ type Store interface {
 	ValidateCredentials(username, password string) (bool, error)
 	HasAdminUsers() (bool, error)
 
+	// Plugins
+	SavePlugin(name, version string, wasm []byte, config map[string]any) error
+	GetPlugin(name string) (PluginRecord, error)
+	ListPlugins() ([]PluginRecord, error)
+	DeletePlugin(name string) error
+	SaveHook(pluginName, hook, function, route string) error
+	ListHooks(hookType string) ([]HookRecord, error)
+
 	Close() error
+}
+
+// PluginRecord is a plugin row from the store.
+type PluginRecord struct {
+	Name      string         `json:"name"`
+	Version   string         `json:"version"`
+	Wasm      []byte         `json:"-"`
+	Config    map[string]any `json:"config"`
+	Enabled   bool           `json:"enabled"`
+	CreatedAt int64          `json:"created_at"`
+}
+
+// HookRecord is a plugin_hooks row from the store.
+type HookRecord struct {
+	ID         int64  `json:"id"`
+	PluginName string `json:"plugin_name"`
+	Hook       string `json:"hook"`
+	Function   string `json:"function"`
+	Route      string `json:"route"`
+	Position   int    `json:"position"`
 }
 
 // SQLiteStore implements Store backed by a SQLite .draft file.

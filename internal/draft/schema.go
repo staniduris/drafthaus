@@ -119,6 +119,24 @@ CREATE TABLE IF NOT EXISTS page_views (
 
 CREATE INDEX IF NOT EXISTS idx_page_views_path_date ON page_views(path, created_at);
 CREATE INDEX IF NOT EXISTS idx_page_views_date ON page_views(created_at);
+
+CREATE TABLE IF NOT EXISTS plugins (
+    name       TEXT PRIMARY KEY,
+    version    TEXT NOT NULL,
+    wasm       BLOB NOT NULL,
+    config     TEXT DEFAULT '{}',
+    enabled    BOOLEAN NOT NULL DEFAULT 1,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS plugin_hooks (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    plugin_name TEXT NOT NULL REFERENCES plugins(name) ON DELETE CASCADE,
+    hook        TEXT NOT NULL,
+    function    TEXT NOT NULL,
+    route       TEXT DEFAULT '',
+    position    INTEGER NOT NULL DEFAULT 0
+);
 `
 
 // InitSchema creates all tables and seeds metadata if needed.

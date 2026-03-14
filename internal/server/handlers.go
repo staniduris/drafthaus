@@ -15,6 +15,7 @@ import (
 	"github.com/drafthaus/drafthaus/internal/analytics"
 	"github.com/drafthaus/drafthaus/internal/draft"
 	"github.com/drafthaus/drafthaus/internal/graph"
+	"github.com/drafthaus/drafthaus/internal/plugins"
 	"github.com/drafthaus/drafthaus/internal/projections"
 	"github.com/drafthaus/drafthaus/internal/render"
 )
@@ -32,10 +33,12 @@ type Handlers struct {
 	router   *Router
 	sessions *SessionStore
 	tracker  *analytics.Tracker
+	pluginRT *plugins.Runtime
+	hooks    *plugins.HookManager
 }
 
 // NewHandlers creates a Handlers wiring together all the dependencies.
-func NewHandlers(store draft.Store, resolver *graph.Resolver, pipeline *render.Pipeline, router *Router, sessions *SessionStore, tracker *analytics.Tracker) *Handlers {
+func NewHandlers(store draft.Store, resolver *graph.Resolver, pipeline *render.Pipeline, router *Router, sessions *SessionStore, tracker *analytics.Tracker, pluginRT *plugins.Runtime, hooks *plugins.HookManager) *Handlers {
 	return &Handlers{
 		store:    store,
 		resolver: resolver,
@@ -43,6 +46,8 @@ func NewHandlers(store draft.Store, resolver *graph.Resolver, pipeline *render.P
 		router:   router,
 		sessions: sessions,
 		tracker:  tracker,
+		pluginRT: pluginRT,
+		hooks:    hooks,
 	}
 }
 
@@ -65,6 +70,8 @@ func (h *Handlers) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.serveAdmin(w, r)
 	case strings.HasPrefix(path, "/_api/"):
 		h.apiDispatch(w, r)
+	case strings.HasPrefix(path, "/_plugins/"):
+		h.servePluginRoute(w, r)
 	case strings.HasPrefix(path, "/_assets/"):
 		h.serveAsset(w, r)
 	case path == "/_dh/style.css":
@@ -459,6 +466,8 @@ func (h *Handlers) apiDispatch(w http.ResponseWriter, r *http.Request) {
 		h.dispatchViews(w, r, parts[1:])
 	case "tokens":
 		h.dispatchTokens(w, r)
+	case "plugins":
+		h.dispatchPlugins(w, r, parts[1:])
 	default:
 		jsonError(w, "not found", http.StatusNotFound)
 	}
@@ -1066,6 +1075,181 @@ td:last-child{text-align:right;color:#94a3b8}
 </script>
 </body>
 </html>`
+
+// -------------------------------------------------------------------------
+// Plugin API
+// -------------------------------------------------------------------------
+
+// dispatchPlugins routes /_api/plugins/* requests.
+//
+//	GET    /_api/plugins              → list plugins
+//	POST   /_api/plugins              → upload plugin (multipart: name, wasm file, config JSON)
+//	DELETE /_api/plugins/:name        → delete plugin
+//	POST   /_api/plugins/:name/hooks  → register hook
+//	GET    /_api/plugins/hooks/:type  → list hooks for type
+func (h *Handlers) dispatchPlugins(w http.ResponseWriter, r *http.Request, parts []string) {
+	switch {
+	case len(parts) == 0 && r.Method == http.MethodGet:
+		h.listPluginsAPI(w, r)
+	case len(parts) == 0 && r.Method == http.MethodPost:
+		h.uploadPluginAPI(w, r)
+	case len(parts) == 1 && r.Method == http.MethodDelete:
+		h.deletePluginAPI(w, r, parts[0])
+	case len(parts) == 2 && parts[1] == "hooks" && r.Method == http.MethodPost:
+		h.registerHookAPI(w, r, parts[0])
+	case len(parts) == 2 && parts[0] == "hooks" && r.Method == http.MethodGet:
+		h.listHooksAPI(w, r, parts[1])
+	default:
+		jsonError(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (h *Handlers) listPluginsAPI(w http.ResponseWriter, r *http.Request) {
+	if h.pluginRT == nil {
+		jsonOK(w, []*plugins.Plugin{})
+		return
+	}
+	jsonOK(w, h.pluginRT.ListPlugins())
+}
+
+func (h *Handlers) uploadPluginAPI(w http.ResponseWriter, r *http.Request) {
+	if h.pluginRT == nil {
+		jsonError(w, "plugin runtime not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		jsonError(w, "parse multipart: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	name := r.FormValue("name")
+	if name == "" {
+		jsonError(w, "name is required", http.StatusBadRequest)
+		return
+	}
+
+	f, _, err := r.FormFile("wasm")
+	if err != nil {
+		jsonError(w, "wasm file required: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer f.Close()
+
+	wasmBytes, err := io.ReadAll(f)
+	if err != nil {
+		jsonError(w, "read wasm: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	configRaw := r.FormValue("config")
+	var config map[string]any
+	if configRaw != "" {
+		if err := json.Unmarshal([]byte(configRaw), &config); err != nil {
+			jsonError(w, "invalid config JSON: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+	if config == nil {
+		config = map[string]any{}
+	}
+
+	p, err := h.pluginRT.LoadPlugin(r.Context(), name, wasmBytes)
+	if err != nil {
+		jsonError(w, "load plugin: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := h.store.SavePlugin(name, p.Version, wasmBytes, config); err != nil {
+		jsonError(w, "save plugin: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(p) //nolint:errcheck
+}
+
+func (h *Handlers) deletePluginAPI(w http.ResponseWriter, r *http.Request, name string) {
+	if h.pluginRT == nil {
+		jsonError(w, "plugin runtime not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	if err := h.store.DeletePlugin(name); err != nil {
+		jsonError(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	// Unload from runtime — best effort (plugin may not be currently loaded).
+	h.pluginRT.UnloadPlugin(r.Context(), name) //nolint:errcheck
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handlers) registerHookAPI(w http.ResponseWriter, r *http.Request, pluginName string) {
+	if h.hooks == nil {
+		jsonError(w, "plugin runtime not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	var reg plugins.HookRegistration
+	if err := json.NewDecoder(r.Body).Decode(&reg); err != nil {
+		jsonError(w, "invalid body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	reg.PluginName = pluginName
+
+	if err := h.hooks.Register(reg); err != nil {
+		jsonError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := h.store.SaveHook(reg.PluginName, string(reg.Hook), reg.Function, reg.Route); err != nil {
+		jsonError(w, "persist hook: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(reg) //nolint:errcheck
+}
+
+func (h *Handlers) listHooksAPI(w http.ResponseWriter, r *http.Request, hookType string) {
+	recs, err := h.store.ListHooks(hookType)
+	if err != nil {
+		jsonError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	jsonOK(w, recs)
+}
+
+// servePluginRoute handles /_plugins/* — delegates to on_request hooks.
+func (h *Handlers) servePluginRoute(w http.ResponseWriter, r *http.Request) {
+	if h.hooks == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	input, err := json.Marshal(map[string]string{
+		"method": r.Method,
+		"path":   r.URL.Path,
+		"query":  r.URL.RawQuery,
+	})
+	if err != nil {
+		h.serveError(w, err)
+		return
+	}
+
+	result, err := h.hooks.RunHooks(r.Context(), plugins.HookOnRequest, input)
+	if err != nil {
+		h.serveError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(result) //nolint:errcheck
+}
 
 // -------------------------------------------------------------------------
 // Helpers

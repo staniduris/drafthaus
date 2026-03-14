@@ -11,6 +11,7 @@ import (
 	"github.com/drafthaus/drafthaus/internal/analytics"
 	"github.com/drafthaus/drafthaus/internal/draft"
 	"github.com/drafthaus/drafthaus/internal/graph"
+	"github.com/drafthaus/drafthaus/internal/plugins"
 	"github.com/drafthaus/drafthaus/internal/render"
 )
 
@@ -18,6 +19,7 @@ import (
 type Server struct {
 	httpServer *http.Server
 	store      draft.Store
+	pluginRT   *plugins.Runtime
 }
 
 // New creates a Server, wiring together all layers.
@@ -37,7 +39,22 @@ func New(store draft.Store, host string, port int) (*Server, error) {
 		tracker = analytics.NewTracker(sqliteStore.DB())
 	}
 
-	handlers := NewHandlers(store, resolver, pipeline, router, sessions, tracker)
+	// Plugin runtime — non-fatal if it fails.
+	ctx := context.Background()
+	var pluginRT *plugins.Runtime
+	var hookMgr *plugins.HookManager
+	rt, err := plugins.NewRuntime(ctx)
+	if err != nil {
+		log.Printf("warn: plugin runtime unavailable: %v", err)
+	} else {
+		pluginRT = rt
+		if loadErr := plugins.LoadFromStore(ctx, rt, store); loadErr != nil {
+			log.Printf("warn: loading plugins from store: %v", loadErr)
+		}
+		hookMgr = plugins.NewHookManager(rt)
+	}
+
+	handlers := NewHandlers(store, resolver, pipeline, router, sessions, tracker, pluginRT, hookMgr)
 
 	// Middleware chain: Security → Logging → Gzip → CORS → Auth → Analytics → Handlers
 	var h http.Handler = handlers
@@ -61,6 +78,7 @@ func New(store draft.Store, host string, port int) (*Server, error) {
 	return &Server{
 		httpServer: srv,
 		store:      store,
+		pluginRT:   pluginRT,
 	}, nil
 }
 
@@ -74,7 +92,12 @@ func (s *Server) Start() error {
 	return nil
 }
 
-// Shutdown gracefully drains in-flight requests.
+// Shutdown gracefully drains in-flight requests and closes the plugin runtime.
 func (s *Server) Shutdown(ctx context.Context) error {
+	if s.pluginRT != nil {
+		if err := s.pluginRT.Close(ctx); err != nil {
+			log.Printf("warn: close plugin runtime: %v", err)
+		}
+	}
 	return s.httpServer.Shutdown(ctx)
 }
