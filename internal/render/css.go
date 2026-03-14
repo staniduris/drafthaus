@@ -68,6 +68,9 @@ func GenerateCSS(tokens *draft.Tokens) string {
 	// ---- Custom properties --------------------------------------------------
 	b.WriteString(":root {\n")
 	for name, val := range tokens.Colors {
+		if name == "site_name" {
+			continue // metadata, not a CSS color
+		}
 		fmt.Fprintf(&b, "  --dh-color-%s: %s;\n", name, val)
 	}
 	for name, val := range tokens.Fonts {
@@ -83,7 +86,7 @@ func GenerateCSS(tokens *draft.Tokens) string {
 	b.WriteString(`*,*::before,*::after{box-sizing:border-box}
 body,h1,h2,h3,h4,h5,h6,p,figure,blockquote,dl,dd{margin:0}
 ul,ol{margin:0}
-html{line-height:1.5;-webkit-text-size-adjust:100%;scroll-behavior:smooth;overflow-x:hidden}
+html{line-height:1.5;-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 img,picture,video,canvas,svg{display:block;max-width:100%}
 input,button,textarea,select{font:inherit}
 `)
@@ -163,12 +166,12 @@ p{line-height:1.7}
   padding-block:%s;
 }
 
-.dh-section:first-child{
+body > .dh-stack > .dh-section:first-child,
+body > .dh-section:first-child{
   background:linear-gradient(135deg,var(--dh-color-text,#0F172A) 0%%,color-mix(in srgb,var(--dh-color-text,#0F172A),var(--dh-color-primary,#2563EB) 30%%) 100%%);
   color:var(--dh-color-background,#fff);
-  padding:8rem 2rem 5rem;
-  margin:-4rem calc(-50vw + 50%) 3rem;
-  width:100vw;
+  padding:5rem 2rem;
+  margin:0;
   text-align:center;
   position:relative;
   overflow:hidden;
@@ -486,14 +489,13 @@ p{line-height:1.7}
 
 `, colorVar("surface"), radius)
 
-	// ---- Site nav — floats over hero --------------------------------------
-	b.WriteString(`.dh-site-nav{
-  background:none;
-  color:#fff;
+	// ---- Site nav -----------------------------------------------------------
+	fmt.Fprintf(&b, `.dh-site-nav{
+  background:%s;
+  color:%s;
   padding:0 2rem;
   position:relative;
   z-index:100;
-  margin-bottom:-4rem;
 }
 .dh-site-nav__inner{
   max-width:64rem;
@@ -525,7 +527,7 @@ p{line-height:1.7}
 }
 .dh-site-nav__links a:hover{opacity:1}
 
-`)
+`, colorVar("text"), colorVar("background"))
 
 	// ---- Footer -------------------------------------------------------------
 	fmt.Fprintf(&b, `.dh-footer{

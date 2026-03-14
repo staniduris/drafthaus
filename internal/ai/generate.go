@@ -144,7 +144,7 @@ func ApplySiteSpec(store draft.Store, spec *SiteSpec) error {
 	for k, v := range spec.Colors {
 		colors[k] = v
 	}
-	// Store site name in colors map as a metadata field (used by nav bar)
+	// Store site name in colors map (nav bar reads it). Skipped in CSS output.
 	colors["site_name"] = spec.SiteName
 	fonts := map[string]string{
 		"body":    "Inter",
@@ -284,25 +284,20 @@ func ApplySiteSpec(store draft.Store, spec *SiteSpec) error {
 		}
 	}
 
-	// Homepage view: hero + one featured section (the primary content type).
-	// Use the route list path to derive a friendly section title.
-	homepageSections := []any{
-		map[string]any{
-			"type": "Section",
-			"children": []any{
-				map[string]any{"type": "Heading", "props": map[string]any{"text": spec.SiteName, "level": 1}},
-				map[string]any{"type": "Text", "props": map[string]any{"text": spec.Description}},
-			},
+	// Homepage: hero (full-width) + content sections (in container).
+	heroSection := map[string]any{
+		"type": "Section",
+		"children": []any{
+			map[string]any{"type": "Heading", "props": map[string]any{"text": spec.SiteName, "level": 1}},
+			map[string]any{"type": "Text", "props": map[string]any{"text": spec.Description}},
 		},
 	}
-	// Only add ONE featured section (the first type with a list route) to avoid
-	// the "each" bind loading wrong entity types. The homepage handler loads
-	// entities from the first matching type.
+
+	var contentSections []any
 	for _, etSpec := range spec.EntityTypes {
 		if etSpec.Routes == nil || etSpec.Routes.List == "" {
 			continue
 		}
-		// Derive display name from route path: /menu → "Our Menu", /blog → "Latest Posts"
 		sectionTitle := friendlySectionTitle(etSpec.Routes.List)
 		section := map[string]any{
 			"type": "Section",
@@ -321,15 +316,17 @@ func ApplySiteSpec(store draft.Store, spec *SiteSpec) error {
 				},
 			},
 		}
-		homepageSections = append(homepageSections, section)
-		break // only one featured section on homepage
+		contentSections = append(contentSections, section)
+		break
 	}
+
 	homepageTree := map[string]any{
-		"type": "Container",
+		"type": "Stack",
 		"children": []any{
+			heroSection,
 			map[string]any{
-				"type":     "Stack",
-				"children": homepageSections,
+				"type":     "Container",
+				"children": contentSections,
 			},
 		},
 	}
