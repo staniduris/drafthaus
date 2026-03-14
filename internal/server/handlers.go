@@ -14,6 +14,7 @@ import (
 	"github.com/drafthaus/drafthaus/embed/admin"
 	"github.com/drafthaus/drafthaus/internal/draft"
 	"github.com/drafthaus/drafthaus/internal/graph"
+	"github.com/drafthaus/drafthaus/internal/projections"
 	"github.com/drafthaus/drafthaus/internal/render"
 )
 
@@ -61,6 +62,12 @@ func (h *Handlers) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.serveAsset(w, r)
 	case path == "/_dh/style.css":
 		h.serveCSS(w, r)
+	case path == "/feed.xml" || path == "/rss.xml":
+		h.serveRSS(w, r)
+	case path == "/sitemap.xml":
+		h.serveSitemap(w, r)
+	case strings.HasPrefix(path, "/api/v1/"):
+		h.servePublicAPI(w, r)
 	default:
 		h.servePage(w, r)
 	}
@@ -291,6 +298,153 @@ const page500HTML = `<!DOCTYPE html>
 <style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f9fafb}
 .box{text-align:center;padding:2rem}h1{font-size:2rem;margin:0;color:#dc2626}pre{text-align:left;background:#f3f4f6;padding:1rem;border-radius:0.5rem;overflow:auto;color:#374151}</style>
 </head><body><div class="box"><h1>Internal Server Error</h1><pre>%s</pre></div></body></html>`
+
+// -------------------------------------------------------------------------
+// Projection handlers (RSS, sitemap, public API)
+// -------------------------------------------------------------------------
+
+func (h *Handlers) serveRSS(w http.ResponseWriter, r *http.Request) {
+	types, err := h.store.ListTypes()
+	if err != nil {
+		h.serveError(w, fmt.Errorf("list types: %w", err))
+		return
+	}
+
+	// Find best type: prefer one with published_at, then any type with a detail route.
+	var chosen *draft.EntityType
+	for _, t := range types {
+		if t.Routes == nil || t.Routes.Detail == "" {
+			continue
+		}
+		for _, f := range t.Fields {
+			if f.Name == "published_at" {
+				chosen = t
+				break
+			}
+		}
+		if chosen != nil {
+			break
+		}
+	}
+	if chosen == nil {
+		for _, t := range types {
+			if t.Routes != nil && t.Routes.Detail != "" {
+				chosen = t
+				break
+			}
+		}
+	}
+	if chosen == nil {
+		w.Header().Set("Content-Type", "application/rss+xml; charset=utf-8")
+		w.Write([]byte("<?xml version=\"1.0\" encoding=\"utf-8\"?><rss version=\"2.0\"><channel><title>Feed</title></channel></rss>")) //nolint:errcheck
+		return
+	}
+
+	entities, _, err := h.resolver.ResolveList(chosen.Slug, graph.ListOpts{
+		Status:  "published",
+		Limit:   20,
+		OrderBy: "position",
+		Order:   "asc",
+	})
+	if err != nil {
+		h.serveError(w, fmt.Errorf("resolve list: %w", err))
+		return
+	}
+
+	scheme := "https"
+	if r.TLS == nil {
+		scheme = "http"
+	}
+	baseURL := scheme + "://" + r.Host
+
+	out, err := projections.GenerateRSS(entities, chosen, baseURL)
+	if err != nil {
+		h.serveError(w, fmt.Errorf("generate rss: %w", err))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/rss+xml; charset=utf-8")
+	w.Write(out) //nolint:errcheck
+}
+
+func (h *Handlers) serveSitemap(w http.ResponseWriter, r *http.Request) {
+	scheme := "https"
+	if r.TLS == nil {
+		scheme = "http"
+	}
+	baseURL := scheme + "://" + r.Host
+
+	out, err := projections.GenerateSitemap(h.store, h.resolver, baseURL)
+	if err != nil {
+		h.serveError(w, fmt.Errorf("generate sitemap: %w", err))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+	w.Write(out) //nolint:errcheck
+}
+
+func (h *Handlers) servePublicAPI(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Cache-Control", "public, max-age=60")
+
+	if r.Method == http.MethodOptions {
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		jsonError(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Strip /api/v1/content/ prefix.
+	sub := strings.TrimPrefix(r.URL.Path, "/api/v1/content/")
+	sub = strings.TrimRight(sub, "/")
+	parts := splitPath(sub)
+
+	if len(parts) == 0 {
+		jsonError(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	typeSlug := parts[0]
+
+	if len(parts) == 1 {
+		// List entities of given type (published only).
+		entities, total, err := h.resolver.ResolveList(typeSlug, graph.ListOpts{
+			Status: "published",
+			Limit:  100,
+		})
+		if err != nil {
+			jsonError(w, "not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(projections.EntityListToJSON(entities, total)) //nolint:errcheck
+		return
+	}
+
+	if len(parts) == 2 {
+		entitySlug := parts[1]
+		re, err := h.resolver.ResolveBySlug(typeSlug, entitySlug)
+		if err != nil {
+			jsonError(w, "not found", http.StatusNotFound)
+			return
+		}
+		if re.Entity.Status != "published" {
+			jsonError(w, "not found", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(projections.EntityToJSON(re)) //nolint:errcheck
+		return
+	}
+
+	jsonError(w, "not found", http.StatusNotFound)
+}
 
 // -------------------------------------------------------------------------
 // API dispatch

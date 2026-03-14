@@ -26,6 +26,7 @@ func GenerateMeta(entity *graph.ResolvedEntity, tokens *draft.Tokens) string {
 	var b strings.Builder
 
 	b.WriteString("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n")
+	b.WriteString("<link rel=\"alternate\" type=\"application/rss+xml\" title=\"RSS Feed\" href=\"/feed.xml\">\n")
 
 	if title != "" {
 		fmt.Fprintf(&b, "<title>%s</title>\n", Esc(title))
