@@ -199,6 +199,14 @@ func expandEachNode(n *Node, eachExpr string, ctx *BindContext) (*Node, error) {
 		if err != nil {
 			return nil, fmt.Errorf("bind each element: %w", err)
 		}
+		// Auto-inject href on Card nodes for entity navigation
+		if clone.Type == "Card" && re.Type != nil && re.Type.Routes != nil && re.Type.Routes.Detail != "" && re.Entity.Slug != "" {
+			if clone.Props == nil {
+				clone.Props = make(map[string]any)
+			}
+			href := strings.Replace(re.Type.Routes.Detail, "{slug}", re.Entity.Slug, 1)
+			clone.Props["href"] = href
+		}
 		clones = append(clones, clone)
 	}
 
