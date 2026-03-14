@@ -203,48 +203,15 @@ func parseViewTree(tree any) (*Node, error) {
 
 // buildHTMLDoc wraps rendered content in a complete HTML5 document.
 func buildHTMLDoc(meta, css, body string, tokens *draft.Tokens) string {
+	_ = tokens
 	var b strings.Builder
-	b.WriteString("<!DOCTYPE html>\n")
-	b.WriteString("<html lang=\"en\">\n")
-	b.WriteString("<head>\n")
-	b.WriteString("<meta charset=\"utf-8\">\n")
+	b.WriteString("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n")
 	b.WriteString(meta)
-
-	// Load Google Fonts if custom fonts are specified
-	if tokens != nil && len(tokens.Fonts) > 0 {
-		seen := make(map[string]bool)
-		var families []string
-		for _, font := range tokens.Fonts {
-			if font != "" && !seen[font] && font != "system-ui" && font != "sans-serif" && font != "serif" && font != "monospace" {
-				seen[font] = true
-				families = append(families, strings.ReplaceAll(font, " ", "+"))
-			}
-		}
-		if len(families) > 0 {
-			b.WriteString("<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n")
-			b.WriteString("<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n")
-			fmt.Fprintf(&b, "<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?%s&display=swap\">\n",
-				fontsQuery(families))
-		}
-	}
-
 	b.WriteString("<style>\n")
 	b.WriteString(css)
-	b.WriteString("</style>\n")
-	b.WriteString("</head>\n")
-	b.WriteString("<body>\n")
+	b.WriteString("</style>\n</head>\n<body>\n")
 	b.WriteString(body)
 	b.WriteString("\n<footer class=\"dh-footer\"><p>Powered by Drafthaus</p></footer>")
-	b.WriteString("\n</body>\n")
-	b.WriteString("</html>")
+	b.WriteString("\n</body>\n</html>")
 	return b.String()
-}
-
-// fontsQuery builds the Google Fonts API query string for the given font families.
-func fontsQuery(families []string) string {
-	var parts []string
-	for _, f := range families {
-		parts = append(parts, "family="+f+":wght@400;600;700")
-	}
-	return strings.Join(parts, "&")
 }
