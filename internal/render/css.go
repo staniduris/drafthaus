@@ -90,12 +90,12 @@ html{line-height:1.5;-webkit-text-size-adjust:100%}
 
 	// ---- Base typography ----------------------------------------------------
 	fmt.Fprintf(&b, "body{\n  font-family:%s;\n  color:%s;\n  background:%s;\n  line-height:1.6;\n}\n\n",
-		fontVar("sans"),
+		fontVar("body"),
 		colorVar("text"),
 		colorVar("background"),
 	)
 	fmt.Fprintf(&b, "h1,h2,h3,h4,h5,h6{\n  font-family:%s;\n  line-height:1.2;\n  color:%s;\n}\n\n",
-		fontVar("sans"),
+		fontVar("heading"),
 		colorVar("text"),
 	)
 	fmt.Fprintf(&b, "a{color:%s;}\n\n", colorVar("primary"))
@@ -122,7 +122,7 @@ html{line-height:1.5;-webkit-text-size-adjust:100%}
 	fmt.Fprintf(&b, ".dh-text{\n  line-height:1.6;\n  margin-bottom:%s;\n}\n\n", padSm)
 
 	fmt.Fprintf(&b, ".dh-heading{\n  font-family:%s;\n  margin-bottom:%s;\n  line-height:1.2;\n}\n\n",
-		fontVar("sans"), padSm)
+		fontVar("heading"), padSm)
 
 	fmt.Fprintf(&b, ".dh-richtext{\n  line-height:1.7;\n}\n")
 	fmt.Fprintf(&b, ".dh-richtext p{margin-bottom:%s}\n\n", padSm)
@@ -201,6 +201,13 @@ html{line-height:1.5;-webkit-text-size-adjust:100%}
 	b.WriteString(".dh-site-nav__links{\n  display:flex;\n  gap:1.5rem;\n}\n")
 	b.WriteString(".dh-site-nav__links a{\n  color:inherit;\n  text-decoration:none;\n  opacity:0.8;\n}\n")
 	b.WriteString(".dh-site-nav__links a:hover{\n  opacity:1;\n}\n\n")
+
+	// ---- Card links --------------------------------------------------------
+	b.WriteString(".dh-card a{\n  text-decoration:none;\n  color:inherit;\n  display:block;\n}\n")
+	b.WriteString(".dh-card:has(a):hover{\n  box-shadow:0 2px 8px rgba(0,0,0,0.08);\n  transform:translateY(-1px);\n  transition:all 0.15s;\n}\n\n")
+
+	// ---- Footer ------------------------------------------------------------
+	b.WriteString(".dh-footer{\n  text-align:center;\n  padding:2rem 1rem;\n  margin-top:3rem;\n  border-top:1px solid var(--dh-color-border);\n  color:var(--dh-color-muted);\n  font-size:0.875rem;\n}\n\n")
 
 	// ---- Responsive ---------------------------------------------------------
 	b.WriteString("@media (max-width:768px){\n")
