@@ -43,7 +43,7 @@ func Generate(name, description string, cfg ai.Config, specFile string) error {
 
 		fmt.Printf("Generating site from description using %s...\n", provider.Name())
 
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 
 		spec, err = ai.GenerateSite(ctx, provider, description)

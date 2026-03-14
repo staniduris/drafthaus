@@ -64,14 +64,25 @@ VIEW TREE RULES:
 - Available component types: Stack, Section, Container, Grid, Columns, Heading, Text, Card, Badge, Price, Action, Image, RichText, Date.
 - Bind syntax: {"text": "field_name"} for Heading/Text, {"value": "field_name"} for Badge/Price, {"each": "entities"} on Card for iteration, {"blocks": "field_name"} for RichText.
 
-HOMEPAGE PATTERN:
-1. Hero Section (dark gradient bg): large Heading with site name, Text with tagline, Action CTA — use classes like "bg-gradient-to-br from-gray-900 to-gray-800 text-white py-24 px-8"
-2. Content sections (alternating): first on "bg-white", second on "bg-gray-50" — each with a section Heading (h2) and a Grid of Cards
-3. Cards: use "bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow p-6 border border-gray-100"
-4. Closing Section (dark): short CTA with "bg-gray-900 text-white py-16 px-8 text-center"
+SPECIAL CSS CLASSES (use these for rich visual output):
+- "dh-hero" on hero Section: adds gradient overlay + subtle SVG texture pattern. Combine with bg-gradient-to-br and text-white.
+- "dh-ornament" on a Text element: renders decorative line dividers around the text content (use with a single emoji like "☕" or "✦").
+- "dh-icon-circle" on a Text element: renders the text (emoji) inside a circular icon container. Use for feature cards.
+- "dh-card-img dh-card-img--dark" on a Section inside a Card: renders a dark gradient placeholder image area (12rem height). Variants: --dark, --warm, --cool, --green, --neutral.
+- "dh-stats" on a Stack: renders children as a horizontal stats grid. Each child should be a Fragment with two Text children: one with class "number" and one with class "label".
+- "dh-quote-bg" on a Section: renders a large decorative quotation mark. Use in story/about sections.
+- "dh-signature" on a Stack: renders a top border separator for signatures/attribution.
 
-LIST VIEW PATTERN: Container → Stack with Heading (h1) → Grid (columns 2 or 3) → Card (bind each: entities) → [Badge, Heading h3, Text, Price as relevant]
-DETAIL VIEW PATTERN: Container → Stack → Heading (h1, large) → optional Badge → Text or RichText for body → Price if applicable
+HOMEPAGE PATTERN (follow this structure closely):
+1. HERO: Section with "dh-hero min-h-[85vh] flex items-center justify-center text-center bg-gradient-to-br from-stone-950 via-stone-900 to-stone-800 text-white" → Container → eyebrow Text (small uppercase tracking-[0.2em] text-amber-400), Heading h1 (text-5xl md:text-7xl font-extrabold), subtitle Text (text-lg text-white/70), Stack with two Action CTAs (primary filled + secondary outline)
+2. FEATURES: Section "py-20 bg-amber-50/50" → Container → section Heading h2, subtitle Text, ornament Text "☕" with "dh-ornament", Grid(3col) of feature Cards with dh-icon-circle emoji, Heading h3, description Text
+3. CONTENT: Section "py-20" → Container → Heading h2, subtitle, ornament, Grid(2col) of entity Cards with "dh-card-img dh-card-img--dark" header, Badge + Price row, Heading h3, description Text
+4. STATS: Section "py-12 bg-amber-800 text-white" → Container → Stack "dh-stats" → Fragment children with number + label
+5. STORY: Section "py-20 bg-stone-900 text-white" → Container → Columns(1:1) → left: Section "dh-quote-bg" visual, right: Stack with Heading h2, paragraph Texts, Stack "dh-signature" with name + role
+6. VISIT: Section "py-20 bg-amber-50 text-center" → Container → Heading h2, hours Text, address Text with pin emoji
+
+LIST VIEW: Section "py-16 bg-stone-900 text-white text-center" header → Section "py-16" → Container → Grid → Card with dh-card-img, Badge+Price row, Heading, description
+DETAIL VIEW: Section "py-20" → Container "max-w-xl" → Badge+Price row, Heading h1, description Text
 
 JSON schema:
 {
