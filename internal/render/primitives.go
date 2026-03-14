@@ -493,6 +493,9 @@ func mapPrimitive(n *Node, _ *RenderContext) (string, error) {
 
 func actionPrimitive(n *Node, _ *RenderContext) (string, error) {
 	label := PropString(n, "label")
+	if label == "" {
+		label = PropString(n, "text") // AI may bind text instead of label
+	}
 	href := PropString(n, "href")
 	variant := PropString(n, "variant")
 	base := "dh-action"
