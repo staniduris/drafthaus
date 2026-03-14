@@ -144,6 +144,8 @@ func ApplySiteSpec(store draft.Store, spec *SiteSpec) error {
 	for k, v := range spec.Colors {
 		colors[k] = v
 	}
+	// Store site name in colors map as a metadata field (used by nav bar)
+	colors["site_name"] = spec.SiteName
 	fonts := map[string]string{
 		"body":    "Inter",
 		"heading": "Inter",
@@ -228,10 +230,13 @@ func ApplySiteSpec(store draft.Store, spec *SiteSpec) error {
 
 		// Generate list view for types that have a list route.
 		if etSpec.Routes != nil && etSpec.Routes.List != "" {
+			listTitle := friendlySectionTitle(etSpec.Routes.List)
 			listTree := map[string]any{
+				"type": "Container",
+				"children": []any{map[string]any{
 				"type": "Stack",
 				"children": []any{
-					map[string]any{"type": "Heading", "props": map[string]any{"text": etSpec.Name, "level": 1}},
+					map[string]any{"type": "Heading", "props": map[string]any{"text": listTitle, "level": 1}},
 					map[string]any{
 						"type":  "Grid",
 						"props": map[string]any{"columns": 2},
@@ -244,7 +249,7 @@ func ApplySiteSpec(store draft.Store, spec *SiteSpec) error {
 						},
 					},
 				},
-			}
+			}}}
 			if err := store.SetView(&draft.View{
 				ID:        newID(),
 				Name:      etSpec.Name + ".list",
@@ -257,10 +262,15 @@ func ApplySiteSpec(store draft.Store, spec *SiteSpec) error {
 			}
 		}
 
-		// Generate detail view.
+		// Generate detail view — wrapped in a Container for proper max-width/padding.
 		detailTree := map[string]any{
-			"type":     "Stack",
-			"children": buildDetailChildren(etSpec.Fields),
+			"type": "Container",
+			"children": []any{
+				map[string]any{
+					"type":     "Stack",
+					"children": buildDetailChildren(etSpec.Fields),
+				},
+			},
 		}
 		if err := store.SetView(&draft.View{
 			ID:        newID(),
@@ -274,7 +284,8 @@ func ApplySiteSpec(store draft.Store, spec *SiteSpec) error {
 		}
 	}
 
-	// Homepage view: one section per entity type.
+	// Homepage view: hero + one featured section (the primary content type).
+	// Use the route list path to derive a friendly section title.
 	homepageSections := []any{
 		map[string]any{
 			"type": "Section",
@@ -284,17 +295,22 @@ func ApplySiteSpec(store draft.Store, spec *SiteSpec) error {
 			},
 		},
 	}
+	// Only add ONE featured section (the first type with a list route) to avoid
+	// the "each" bind loading wrong entity types. The homepage handler loads
+	// entities from the first matching type.
 	for _, etSpec := range spec.EntityTypes {
 		if etSpec.Routes == nil || etSpec.Routes.List == "" {
 			continue
 		}
+		// Derive display name from route path: /menu → "Our Menu", /blog → "Latest Posts"
+		sectionTitle := friendlySectionTitle(etSpec.Routes.List)
 		section := map[string]any{
 			"type": "Section",
 			"children": []any{
-				map[string]any{"type": "Heading", "props": map[string]any{"text": etSpec.Name, "level": 2}},
+				map[string]any{"type": "Heading", "props": map[string]any{"text": sectionTitle, "level": 2}},
 				map[string]any{
 					"type":  "Grid",
-					"props": map[string]any{"columns": 2},
+					"props": map[string]any{"columns": 3},
 					"children": []any{
 						map[string]any{
 							"type":     "Card",
@@ -306,10 +322,16 @@ func ApplySiteSpec(store draft.Store, spec *SiteSpec) error {
 			},
 		}
 		homepageSections = append(homepageSections, section)
+		break // only one featured section on homepage
 	}
 	homepageTree := map[string]any{
-		"type":     "Stack",
-		"children": homepageSections,
+		"type": "Container",
+		"children": []any{
+			map[string]any{
+				"type":     "Stack",
+				"children": homepageSections,
+			},
+		},
 	}
 	if err := store.SetView(&draft.View{
 		ID:        newID(),
@@ -323,6 +345,32 @@ func ApplySiteSpec(store draft.Store, spec *SiteSpec) error {
 	}
 
 	return nil
+}
+
+// friendlySectionTitle converts a route path to a display title.
+func friendlySectionTitle(routePath string) string {
+	path := strings.TrimPrefix(routePath, "/")
+	switch path {
+	case "menu":
+		return "Our Menu"
+	case "blog":
+		return "Latest Posts"
+	case "work", "projects":
+		return "Our Work"
+	case "services":
+		return "Our Services"
+	case "team":
+		return "Our Team"
+	case "products":
+		return "Products"
+	case "gallery":
+		return "Gallery"
+	default:
+		if len(path) > 0 {
+			return strings.ToUpper(path[:1]) + path[1:]
+		}
+		return "Featured"
+	}
 }
 
 // buildListCardChildren returns card child components for the first 2 non-richtext fields.
@@ -370,11 +418,33 @@ func buildDetailChildren(fields []draft.FieldDef) []any {
 				"type": "RichText",
 				"bind": map[string]any{"blocks": f.Name},
 			})
-		default:
+		case draft.FieldCurrency:
 			children = append(children, map[string]any{
-				"type": "Text",
-				"bind": map[string]any{"text": f.Name},
+				"type": "Price",
+				"bind": map[string]any{"value": f.Name},
 			})
+		case draft.FieldBool, draft.FieldSlug, draft.FieldDateTime, draft.FieldDate:
+			// Skip these on detail views — not user-facing
+			continue
+		case draft.FieldEnum:
+			children = append(children, map[string]any{
+				"type": "Badge",
+				"bind": map[string]any{"value": f.Name},
+			})
+		default:
+			// First text field becomes the heading
+			if len(children) == 0 && (f.Type == draft.FieldText) {
+				children = append(children, map[string]any{
+					"type": "Heading",
+					"bind": map[string]any{"text": f.Name},
+					"props": map[string]any{"level": 1},
+				})
+			} else {
+				children = append(children, map[string]any{
+					"type": "Text",
+					"bind": map[string]any{"text": f.Name},
+				})
+			}
 		}
 	}
 	if len(children) == 0 {

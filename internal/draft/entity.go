@@ -67,7 +67,7 @@ func (s *SQLiteStore) GetTypeBySlug(slug string) (*EntityType, error) {
 func (s *SQLiteStore) ListTypes() ([]*EntityType, error) {
 	rows, err := s.db.Query(
 		`SELECT id, name, slug, fields, icon, routes, created_at, updated_at
-		 FROM entity_types ORDER BY name ASC`,
+		 FROM entity_types ORDER BY rowid ASC`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list entity types: %w", err)

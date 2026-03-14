@@ -12,6 +12,7 @@ import (
 // RegisterAll registers all 25 built-in primitives into r.
 func RegisterAll(r *Registry) {
 	// Layout
+	r.Register("Fragment", fragmentPrimitive)
 	r.Register("Page", pagePrimitive)
 	r.Register("Stack", stackPrimitive)
 	r.Register("Columns", columnsPrimitive)
@@ -48,6 +49,11 @@ func RegisterAll(r *Registry) {
 }
 
 // ---- Layout ----------------------------------------------------------------
+
+// fragmentPrimitive renders children with no wrapper element.
+func fragmentPrimitive(n *Node, ctx *RenderContext) (string, error) {
+	return ctx.RenderChildren(n)
+}
 
 func pagePrimitive(n *Node, ctx *RenderContext) (string, error) {
 	children, err := ctx.RenderChildren(n)

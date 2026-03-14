@@ -210,13 +210,10 @@ func expandEachNode(n *Node, eachExpr string, ctx *BindContext) (*Node, error) {
 		clones = append(clones, clone)
 	}
 
-	// Return the clones wrapped in a fragment-like node. Since the render
-	// tree expects a single node here, we use a "Stack" wrapper so it
-	// renders as a simple flex column — callers that use Grid/Columns are
-	// expected to wrap the each node themselves.
+	// Return clones in a Fragment — renders children with no wrapper element,
+	// so Grid/Columns parents receive the clones as direct children.
 	return &Node{
-		Type:     "Stack",
-		Props:    map[string]any{},
+		Type:     "Fragment",
 		Children: clones,
 	}, nil
 }

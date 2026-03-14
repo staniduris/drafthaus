@@ -137,40 +137,18 @@ func (h *Handlers) renderList(m *Match) ([]byte, error) {
 			return nil, err
 		}
 		// Load published entities for the homepage "each" binds.
-		// Prefer entity types with a published_at field (blog-like), then fall back to first type with content.
+		// Use the FIRST entity type with a list route — matches the Homepage view
+		// which also picks the first type with a list route for its featured section.
 		var homeEntities []*graph.ResolvedEntity
 		types, _ := h.store.ListTypes()
-		// First pass: look for types with published_at (blog posts)
 		for _, t := range types {
 			if t.Routes == nil || t.Routes.List == "" {
 				continue
 			}
-			hasPubDate := false
-			for _, f := range t.Fields {
-				if f.Name == "published_at" {
-					hasPubDate = true
-					break
-				}
-			}
-			if hasPubDate {
-				resolved, _, _ := h.resolver.ResolveList(t.Slug, graph.ListOpts{Status: "published", Limit: 10})
-				if len(resolved) > 0 {
-					homeEntities = resolved
-					break
-				}
-			}
-		}
-		// Fallback: first type with published entities (skip utility types like authors/tags)
-		if len(homeEntities) == 0 {
-			for _, t := range types {
-				if t.Routes == nil || t.Routes.List == "" || t.Routes.Detail == "" {
-					continue
-				}
-				resolved, _, _ := h.resolver.ResolveList(t.Slug, graph.ListOpts{Status: "published", Limit: 10})
-				if len(resolved) > 0 {
-					homeEntities = resolved
-					break
-				}
+			resolved, _, _ := h.resolver.ResolveList(t.Slug, graph.ListOpts{Status: "published", Limit: 10})
+			if len(resolved) > 0 {
+				homeEntities = resolved
+				break
 			}
 		}
 		return h.pipeline.RenderList(homeEntities, nil, view)
