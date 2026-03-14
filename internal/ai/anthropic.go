@@ -47,7 +47,7 @@ func (p *anthropicProvider) Complete(ctx context.Context, messages []Message) (s
 
 	body := map[string]any{
 		"model":      p.model,
-		"max_tokens": 4096,
+		"max_tokens": 16384,
 		"messages":   chatMessages,
 	}
 	if systemPrompt != "" {

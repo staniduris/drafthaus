@@ -121,10 +121,11 @@ type TokenSet struct {
 
 // Tokens defines the design system values.
 type Tokens struct {
-	Colors map[string]string `json:"colors"`
-	Fonts  map[string]string `json:"fonts"`
-	Scale  ScaleTokens       `json:"scale"`
-	Mood   string            `json:"mood,omitempty"`
+	Colors   map[string]string `json:"colors"`
+	Fonts    map[string]string `json:"fonts"`
+	Scale    ScaleTokens       `json:"scale"`
+	Mood     string            `json:"mood,omitempty"`
+	SiteName string            `json:"site_name,omitempty"`
 }
 
 // ScaleTokens controls spacing, radius, and density.

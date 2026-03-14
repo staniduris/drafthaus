@@ -12,3 +12,7 @@ drafthaus
 # IDE
 .idea/
 .vscode/
+
+# Node
+node_modules/
+embed/tailwind/dist.css

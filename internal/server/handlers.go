@@ -353,7 +353,12 @@ func (h *Handlers) serveRSS(w http.ResponseWriter, r *http.Request) {
 	}
 	baseURL := scheme + "://" + r.Host
 
-	out, err := projections.GenerateRSS(entities, chosen, baseURL)
+	siteName := ""
+	if ts, tsErr := h.store.GetTokens(); tsErr == nil {
+		siteName = ts.Data.SiteName
+	}
+
+	out, err := projections.GenerateRSS(entities, chosen, baseURL, siteName)
 	if err != nil {
 		h.serveError(w, fmt.Errorf("generate rss: %w", err))
 		return

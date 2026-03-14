@@ -51,6 +51,14 @@ func (s *SQLiteStore) GetTokens() (*TokenSet, error) {
 		return nil, fmt.Errorf("unmarshal tokens data: %w", err)
 	}
 
+	// Migrate site_name from Colors map to SiteName field.
+	if ts.Data.SiteName == "" {
+		if sn, ok := ts.Data.Colors["site_name"]; ok && sn != "" {
+			ts.Data.SiteName = sn
+			delete(ts.Data.Colors, "site_name")
+		}
+	}
+
 	return &ts, nil
 }
 

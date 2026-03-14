@@ -314,10 +314,19 @@ func ApplySiteSpec(store draft.Store, spec *SiteSpec) error {
 	// Store AI-generated views if present; otherwise fall back to programmatic homepage.
 	if len(spec.Views) > 0 {
 		for viewName, rawTree := range spec.Views {
+			treeStr := string(rawTree)
+			// AI may return view trees as JSON strings ("{ ... }") instead of objects ({ ... }).
+			// Unwrap if needed.
+			if len(treeStr) > 1 && treeStr[0] == '"' {
+				var unwrapped string
+				if err := json.Unmarshal(rawTree, &unwrapped); err == nil {
+					treeStr = unwrapped
+				}
+			}
 			if err := store.SetView(&draft.View{
 				ID:        newID(),
 				Name:      viewName,
-				Tree:      string(rawTree),
+				Tree:      treeStr,
 				Version:   1,
 				CreatedAt: n,
 				UpdatedAt: n,

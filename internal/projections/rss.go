@@ -35,10 +35,16 @@ type RSSItem struct {
 }
 
 // GenerateRSS produces an RSS 2.0 XML feed from the given entities.
-func GenerateRSS(entities []*graph.ResolvedEntity, entityType *draft.EntityType, baseURL string) ([]byte, error) {
+// siteName is used as the feed title when non-empty; entityType.Name is the fallback.
+func GenerateRSS(entities []*graph.ResolvedEntity, entityType *draft.EntityType, baseURL string, siteName string) ([]byte, error) {
 	listURL := baseURL
 	if entityType.Routes != nil && entityType.Routes.List != "" {
 		listURL = baseURL + entityType.Routes.List
+	}
+
+	feedTitle := entityType.Name
+	if siteName != "" {
+		feedTitle = siteName
 	}
 
 	items := make([]RSSItem, 0, len(entities))
@@ -49,7 +55,7 @@ func GenerateRSS(entities []*graph.ResolvedEntity, entityType *draft.EntityType,
 	feed := RSS{
 		Version: "2.0",
 		Channel: RSSChannel{
-			Title:       entityType.Name,
+			Title:       feedTitle,
 			Link:        listURL,
 			Description: entityType.Name + " feed",
 			LastBuild:   time.Now().Format(time.RFC1123Z),

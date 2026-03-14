@@ -65,7 +65,8 @@ func pagePrimitive(n *Node, ctx *RenderContext) (string, error) {
 	if title != "" {
 		titleHTML = fmt.Sprintf("<title>%s</title>", Esc(title))
 	}
-	return fmt.Sprintf("%s<main class=\"dh-page\">%s</main>", titleHTML, children), nil
+	cls := mergeClasses("dh-page", PropString(n, "class"))
+	return fmt.Sprintf("%s<main class=\"%s\">%s</main>", titleHTML, cls, children), nil
 }
 
 func stackPrimitive(n *Node, ctx *RenderContext) (string, error) {
@@ -77,12 +78,13 @@ func stackPrimitive(n *Node, ctx *RenderContext) (string, error) {
 	if gap := PropFloat(n, "gap"); gap > 0 {
 		style = fmt.Sprintf(" style=\"gap:%.4grem\"", gap)
 	}
-	return fmt.Sprintf("<div class=\"dh-stack\"%s>%s</div>", style, children), nil
+	cls := mergeClasses("dh-stack", PropString(n, "class"))
+	return fmt.Sprintf("<div class=\"%s\"%s>%s</div>", cls, style, children), nil
 }
 
 func columnsPrimitive(n *Node, ctx *RenderContext) (string, error) {
 	ratio := PropSlice(n, "ratio")
-	cols := ""
+	colStyle := ""
 	if len(ratio) > 0 {
 		parts := make([]string, 0, len(ratio))
 		for _, v := range ratio {
@@ -95,11 +97,12 @@ func columnsPrimitive(n *Node, ctx *RenderContext) (string, error) {
 				parts = append(parts, "1fr")
 			}
 		}
-		cols = fmt.Sprintf(" style=\"grid-template-columns:%s\"", strings.Join(parts, " "))
+		colStyle = fmt.Sprintf(" style=\"grid-template-columns:%s\"", strings.Join(parts, " "))
 	}
 
+	cls := mergeClasses("dh-columns", PropString(n, "class"))
 	var buf strings.Builder
-	buf.WriteString(fmt.Sprintf("<div class=\"dh-columns\"%s>", cols))
+	buf.WriteString(fmt.Sprintf("<div class=\"%s\"%s>", cls, colStyle))
 	for _, child := range n.Children {
 		s, err := ctx.Render(child)
 		if err != nil {
@@ -121,7 +124,8 @@ func gridPrimitive(n *Node, ctx *RenderContext) (string, error) {
 	if cols > 0 {
 		style = fmt.Sprintf(" style=\"grid-template-columns:repeat(%d,1fr)\"", cols)
 	}
-	return fmt.Sprintf("<div class=\"dh-grid\"%s>%s</div>", style, children), nil
+	cls := mergeClasses("dh-grid", PropString(n, "class"))
+	return fmt.Sprintf("<div class=\"%s\"%s>%s</div>", cls, style, children), nil
 }
 
 func sectionPrimitive(n *Node, ctx *RenderContext) (string, error) {
@@ -133,7 +137,8 @@ func sectionPrimitive(n *Node, ctx *RenderContext) (string, error) {
 	if t := PropString(n, "title"); t != "" {
 		titleHTML = fmt.Sprintf("<h2>%s</h2>", Esc(t))
 	}
-	return fmt.Sprintf("<section class=\"dh-section\">%s%s</section>", titleHTML, children), nil
+	cls := mergeClasses("dh-section", PropString(n, "class"))
+	return fmt.Sprintf("<section class=\"%s\">%s%s</section>", cls, titleHTML, children), nil
 }
 
 func sidebarPrimitive(n *Node, ctx *RenderContext) (string, error) {
@@ -153,12 +158,13 @@ func sidebarPrimitive(n *Node, ctx *RenderContext) (string, error) {
 			return "", err
 		}
 	}
+	cls := mergeClasses("dh-sidebar", PropString(n, "class"))
 	return fmt.Sprintf(
-		"<div class=\"dh-sidebar\" style=\"grid-template-columns:1fr var(--dh-sidebar-width,300px)\">"+
+		"<div class=\"%s\" style=\"grid-template-columns:1fr var(--dh-sidebar-width,300px)\">"+
 			"<div class=\"dh-sidebar__main\">%s</div>"+
 			"<aside class=\"dh-sidebar__aside\">%s</aside>"+
 			"</div>",
-		mainHTML, asideHTML,
+		cls, mainHTML, asideHTML,
 	), nil
 }
 
@@ -167,7 +173,8 @@ func containerPrimitive(n *Node, ctx *RenderContext) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("<div class=\"dh-container\">%s</div>", children), nil
+	cls := mergeClasses("dh-container", PropString(n, "class"))
+	return fmt.Sprintf("<div class=\"%s\">%s</div>", cls, children), nil
 }
 
 // ---- Content ---------------------------------------------------------------
@@ -188,7 +195,8 @@ func textPrimitive(n *Node, _ *RenderContext) (string, error) {
 			}
 		}
 	}
-	return fmt.Sprintf("<p class=\"dh-text\">%s</p>", Esc(value)), nil
+	cls := mergeClasses("dh-text", PropString(n, "class"))
+	return fmt.Sprintf("<p class=\"%s\">%s</p>", cls, Esc(value)), nil
 }
 
 func richTextPrimitive(n *Node, _ *RenderContext) (string, error) {
@@ -196,11 +204,12 @@ func richTextPrimitive(n *Node, _ *RenderContext) (string, error) {
 	if len(blocks) == 0 {
 		blocks = PropSlice(n, "blocks")
 	}
+	richCls := mergeClasses("dh-richtext", PropString(n, "class"))
 	if len(blocks) == 0 {
-		return "<div class=\"dh-richtext\"></div>", nil
+		return fmt.Sprintf("<div class=\"%s\"></div>", richCls), nil
 	}
 	var buf strings.Builder
-	buf.WriteString("<div class=\"dh-richtext\">")
+	buf.WriteString(fmt.Sprintf("<div class=\"%s\">", richCls))
 	for _, raw := range blocks {
 		// Handle both map[string]any (from JSON) and *draft.Block (from resolver)
 		var block map[string]any
@@ -284,7 +293,8 @@ func headingPrimitive(n *Node, _ *RenderContext) (string, error) {
 		level = 2
 	}
 	text := PropString(n, "text")
-	return fmt.Sprintf("<h%d class=\"dh-heading\">%s</h%d>", level, Esc(text), level), nil
+	cls := mergeClasses("dh-heading", PropString(n, "class"))
+	return fmt.Sprintf("<h%d class=\"%s\">%s</h%d>", level, cls, Esc(text), level), nil
 }
 
 func imagePrimitive(n *Node, _ *RenderContext) (string, error) {
@@ -296,9 +306,10 @@ func imagePrimitive(n *Node, _ *RenderContext) (string, error) {
 		// Convert "16:9" to "16/9" for CSS aspect-ratio.
 		style = fmt.Sprintf(" style=\"aspect-ratio:%s\"", strings.ReplaceAll(Esc(aspect), ":", "/"))
 	}
+	cls := mergeClasses("dh-image", PropString(n, "class"))
 	return fmt.Sprintf(
-		"<figure class=\"dh-image\"%s><img src=\"%s\" alt=\"%s\" loading=\"lazy\"></figure>",
-		style, Esc(src), Esc(alt),
+		"<figure class=\"%s\"%s><img src=\"%s\" alt=\"%s\" loading=\"lazy\"></figure>",
+		cls, style, Esc(src), Esc(alt),
 	), nil
 }
 
@@ -309,18 +320,20 @@ func videoPrimitive(n *Node, _ *RenderContext) (string, error) {
 	if poster != "" {
 		posterAttr = fmt.Sprintf(" poster=\"%s\"", Esc(poster))
 	}
+	cls := mergeClasses("dh-video", PropString(n, "class"))
 	return fmt.Sprintf(
-		"<div class=\"dh-video\"><video src=\"%s\"%s controls></video></div>",
-		Esc(src), posterAttr,
+		"<div class=\"%s\"><video src=\"%s\"%s controls></video></div>",
+		cls, Esc(src), posterAttr,
 	), nil
 }
 
 func embedPrimitive(n *Node, _ *RenderContext) (string, error) {
 	src := PropString(n, "src")
 	title := PropString(n, "title")
+	cls := mergeClasses("dh-embed", PropString(n, "class"))
 	return fmt.Sprintf(
-		"<div class=\"dh-embed\"><iframe src=\"%s\" title=\"%s\" sandbox=\"allow-scripts\"></iframe></div>",
-		Esc(src), Esc(title),
+		"<div class=\"%s\"><iframe src=\"%s\" title=\"%s\" sandbox=\"allow-scripts\"></iframe></div>",
+		cls, Esc(src), Esc(title),
 	), nil
 }
 
@@ -331,14 +344,16 @@ func codePrimitive(n *Node, _ *RenderContext) (string, error) {
 	if lang != "" {
 		langClass = fmt.Sprintf(" class=\"language-%s\"", Esc(lang))
 	}
-	return fmt.Sprintf("<pre class=\"dh-code\"><code%s>%s</code></pre>", langClass, Esc(text)), nil
+	cls := mergeClasses("dh-code", PropString(n, "class"))
+	return fmt.Sprintf("<pre class=\"%s\"><code%s>%s</code></pre>", cls, langClass, Esc(text)), nil
 }
 
 // ---- Data ------------------------------------------------------------------
 
 func listPrimitive(n *Node, ctx *RenderContext) (string, error) {
+	cls := mergeClasses("dh-list", PropString(n, "class"))
 	var buf strings.Builder
-	buf.WriteString("<ul class=\"dh-list\">")
+	buf.WriteString(fmt.Sprintf("<ul class=\"%s\">", cls))
 	for _, child := range n.Children {
 		s, err := ctx.Render(child)
 		if err != nil {
@@ -354,8 +369,9 @@ func tablePrimitive(n *Node, _ *RenderContext) (string, error) {
 	headers := PropSlice(n, "headers")
 	rows := PropSlice(n, "rows")
 
+	tblCls := mergeClasses("dh-table", PropString(n, "class"))
 	var buf strings.Builder
-	buf.WriteString("<table class=\"dh-table\">")
+	buf.WriteString(fmt.Sprintf("<table class=\"%s\">", tblCls))
 
 	if len(headers) > 0 {
 		buf.WriteString("<thead><tr>")
@@ -389,24 +405,26 @@ func cardPrimitive(n *Node, ctx *RenderContext) (string, error) {
 		return "", err
 	}
 	href := PropString(n, "href")
+	cls := mergeClasses("dh-card", PropString(n, "class"))
 	if href != "" {
 		return fmt.Sprintf(
-			"<article class=\"dh-card\"><a href=\"%s\">%s</a></article>",
-			Esc(href), children,
+			"<article class=\"%s\"><a href=\"%s\">%s</a></article>",
+			cls, Esc(href), children,
 		), nil
 	}
-	return fmt.Sprintf("<article class=\"dh-card\">%s</article>", children), nil
+	return fmt.Sprintf("<article class=\"%s\">%s</article>", cls, children), nil
 }
 
 func badgePrimitive(n *Node, _ *RenderContext) (string, error) {
 	value := PropString(n, "value")
 	variant := PropString(n, "variant")
-	class := "dh-badge"
+	base := "dh-badge"
 	switch variant {
 	case "success", "warning", "error":
-		class = fmt.Sprintf("dh-badge dh-badge--%s", variant)
+		base = fmt.Sprintf("dh-badge dh-badge--%s", variant)
 	}
-	return fmt.Sprintf("<span class=\"%s\">%s</span>", class, Esc(value)), nil
+	cls := mergeClasses(base, PropString(n, "class"))
+	return fmt.Sprintf("<span class=\"%s\">%s</span>", cls, Esc(value)), nil
 }
 
 func pricePrimitive(n *Node, _ *RenderContext) (string, error) {
@@ -416,7 +434,8 @@ func pricePrimitive(n *Node, _ *RenderContext) (string, error) {
 		currency = "$"
 	}
 	formatted := fmt.Sprintf("%s%.2f", Esc(currency), value)
-	return fmt.Sprintf("<span class=\"dh-price\">%s</span>", formatted), nil
+	cls := mergeClasses("dh-price", PropString(n, "class"))
+	return fmt.Sprintf("<span class=\"%s\">%s</span>", cls, formatted), nil
 }
 
 func datePrimitive(n *Node, _ *RenderContext) (string, error) {
@@ -425,6 +444,7 @@ func datePrimitive(n *Node, _ *RenderContext) (string, error) {
 	if format == "" {
 		format = "Jan 2, 2006"
 	}
+	cls := mergeClasses("dh-date", PropString(n, "class"))
 
 	var t time.Time
 	var err error
@@ -442,13 +462,13 @@ func datePrimitive(n *Node, _ *RenderContext) (string, error) {
 		}
 		if err != nil {
 			// Fallback: show raw value unformatted.
-			return fmt.Sprintf("<time class=\"dh-date\">%s</time>", Esc(raw)), nil
+			return fmt.Sprintf("<time class=\"%s\">%s</time>", cls, Esc(raw)), nil
 		}
 	}
 
 	datetime := t.Format(time.RFC3339)
 	display := t.Format(format)
-	return fmt.Sprintf("<time class=\"dh-date\" datetime=\"%s\">%s</time>", Esc(datetime), Esc(display)), nil
+	return fmt.Sprintf("<time class=\"%s\" datetime=\"%s\">%s</time>", cls, Esc(datetime), Esc(display)), nil
 }
 
 func mapPrimitive(n *Node, _ *RenderContext) (string, error) {
@@ -460,11 +480,12 @@ func mapPrimitive(n *Node, _ *RenderContext) (string, error) {
 	if labelText == "" {
 		labelText = fmt.Sprintf("%s, %s", lat, lng)
 	}
+	cls := mergeClasses("dh-map", PropString(n, "class"))
 	return fmt.Sprintf(
-		"<div class=\"dh-map\" data-lat=\"%s\" data-lng=\"%s\">"+
+		"<div class=\"%s\" data-lat=\"%s\" data-lng=\"%s\">"+
 			"<a href=\"%s\" target=\"_blank\" rel=\"noopener noreferrer\">%s</a>"+
 			"</div>",
-		Esc(lat), Esc(lng), mapsURL, Esc(labelText),
+		cls, Esc(lat), Esc(lng), mapsURL, Esc(labelText),
 	), nil
 }
 
@@ -474,15 +495,16 @@ func actionPrimitive(n *Node, _ *RenderContext) (string, error) {
 	label := PropString(n, "label")
 	href := PropString(n, "href")
 	variant := PropString(n, "variant")
-	class := "dh-action"
+	base := "dh-action"
 	switch variant {
 	case "primary", "secondary":
-		class = fmt.Sprintf("dh-action dh-action--%s", variant)
+		base = fmt.Sprintf("dh-action dh-action--%s", variant)
 	}
+	cls := mergeClasses(base, PropString(n, "class"))
 	if href != "" {
-		return fmt.Sprintf("<a class=\"%s\" href=\"%s\">%s</a>", class, Esc(href), Esc(label)), nil
+		return fmt.Sprintf("<a class=\"%s\" href=\"%s\">%s</a>", cls, Esc(href), Esc(label)), nil
 	}
-	return fmt.Sprintf("<button class=\"%s\">%s</button>", class, Esc(label)), nil
+	return fmt.Sprintf("<button class=\"%s\">%s</button>", cls, Esc(label)), nil
 }
 
 func formPrimitive(n *Node, ctx *RenderContext) (string, error) {
@@ -495,9 +517,10 @@ func formPrimitive(n *Node, ctx *RenderContext) (string, error) {
 	if method == "" {
 		method = "post"
 	}
+	cls := mergeClasses("dh-form", PropString(n, "class"))
 	return fmt.Sprintf(
-		"<form class=\"dh-form\" method=\"%s\" action=\"%s\">%s</form>",
-		Esc(method), Esc(action), children,
+		"<form class=\"%s\" method=\"%s\" action=\"%s\">%s</form>",
+		cls, Esc(method), Esc(action), children,
 	), nil
 }
 
@@ -519,9 +542,10 @@ func inputPrimitive(n *Node, _ *RenderContext) (string, error) {
 	if label != "" {
 		labelHTML = fmt.Sprintf("<label>%s</label>", Esc(label))
 	}
+	cls := mergeClasses("dh-field", PropString(n, "class"))
 	return fmt.Sprintf(
-		"<div class=\"dh-field\">%s<input type=\"%s\" name=\"%s\" placeholder=\"%s\"%s></div>",
-		labelHTML, Esc(inputType), Esc(name), Esc(placeholder), requiredAttr,
+		"<div class=\"%s\">%s<input type=\"%s\" name=\"%s\" placeholder=\"%s\"%s></div>",
+		cls, labelHTML, Esc(inputType), Esc(name), Esc(placeholder), requiredAttr,
 	), nil
 }
 
@@ -531,12 +555,13 @@ func searchPrimitive(n *Node, _ *RenderContext) (string, error) {
 	if placeholder == "" {
 		placeholder = "Search..."
 	}
+	cls := mergeClasses("dh-search", PropString(n, "class"))
 	return fmt.Sprintf(
-		"<div class=\"dh-search\" data-dh-island=\"search\" data-entity-type=\"%s\">"+
+		"<div class=\"%s\" data-dh-island=\"search\" data-entity-type=\"%s\">"+
 			"<input type=\"search\" class=\"dh-search__input\" placeholder=\"%s\" autocomplete=\"off\">"+
 			"<div class=\"dh-search__results\" role=\"listbox\" aria-live=\"polite\"></div>"+
 			"</div>",
-		Esc(entityType), Esc(placeholder),
+		cls, Esc(entityType), Esc(placeholder),
 	), nil
 }
 
@@ -547,26 +572,29 @@ func navPrimitive(n *Node, ctx *RenderContext) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("<nav class=\"dh-nav\">%s</nav>", children), nil
+	cls := mergeClasses("dh-nav", PropString(n, "class"))
+	return fmt.Sprintf("<nav class=\"%s\">%s</nav>", cls, children), nil
 }
 
 func linkPrimitive(n *Node, ctx *RenderContext) (string, error) {
 	href := PropString(n, "href")
 	text := PropString(n, "text")
+	cls := mergeClasses("dh-link", PropString(n, "class"))
 	if len(n.Children) > 0 {
 		children, err := ctx.RenderChildren(n)
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("<a class=\"dh-link\" href=\"%s\">%s</a>", Esc(href), children), nil
+		return fmt.Sprintf("<a class=\"%s\" href=\"%s\">%s</a>", cls, Esc(href), children), nil
 	}
-	return fmt.Sprintf("<a class=\"dh-link\" href=\"%s\">%s</a>", Esc(href), Esc(text)), nil
+	return fmt.Sprintf("<a class=\"%s\" href=\"%s\">%s</a>", cls, Esc(href), Esc(text)), nil
 }
 
 func breadcrumbPrimitive(n *Node, _ *RenderContext) (string, error) {
 	items := PropSlice(n, "items")
+	cls := mergeClasses("dh-breadcrumb", PropString(n, "class"))
 	var buf strings.Builder
-	buf.WriteString("<nav class=\"dh-breadcrumb\" aria-label=\"Breadcrumb\"><ol>")
+	buf.WriteString(fmt.Sprintf("<nav class=\"%s\" aria-label=\"Breadcrumb\"><ol>", cls))
 	for _, raw := range items {
 		item, ok := raw.(map[string]any)
 		if !ok {
@@ -611,8 +639,9 @@ func paginationPrimitive(n *Node, _ *RenderContext) (string, error) {
 
 	pageInfo := fmt.Sprintf("<span class=\"dh-pagination__info\">%d / %d</span>", current, total)
 
+	cls := mergeClasses("dh-pagination", PropString(n, "class"))
 	return fmt.Sprintf(
-		"<nav class=\"dh-pagination\" aria-label=\"Pagination\">%s%s%s</nav>",
-		prevHTML, pageInfo, nextHTML,
+		"<nav class=\"%s\" aria-label=\"Pagination\">%s%s%s</nav>",
+		cls, prevHTML, pageInfo, nextHTML,
 	), nil
 }

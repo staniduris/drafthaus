@@ -19,7 +19,21 @@ type BindContext struct {
 // ResolveBind resolves a dot-separated bind expression against entity data.
 // Returns nil, nil when the path is not found (missing data is normal).
 func ResolveBind(expr string, ctx *BindContext) (any, error) {
-	if ctx == nil || ctx.Entity == nil {
+	if ctx == nil {
+		return nil, nil
+	}
+
+	// Check token-level fields (site_name, etc.)
+	if ctx.Tokens != nil {
+		switch expr {
+		case "site_name":
+			if ctx.Tokens.SiteName != "" {
+				return ctx.Tokens.SiteName, nil
+			}
+		}
+	}
+
+	if ctx.Entity == nil {
 		return nil, nil
 	}
 
@@ -120,11 +134,18 @@ func bindNode(n *Node, ctx *BindContext) (*Node, error) {
 		if err != nil {
 			return nil, fmt.Errorf("bind %q → %q: %w", propKey, expr, err)
 		}
+		if clone.Props == nil {
+			clone.Props = make(map[string]any)
+		}
 		if val != nil {
-			if clone.Props == nil {
-				clone.Props = make(map[string]any)
-			}
 			clone.Props[propKey] = val
+		} else if propKey == "text" || propKey == "value" || propKey == "label" {
+			// If the expression didn't resolve to a field, treat it as literal text.
+			// This allows AI-generated views to use bind.text for both field references
+			// ("name") and static text ("Welcome to our shop").
+			if _, exists := clone.Props[propKey]; !exists {
+				clone.Props[propKey] = expr
+			}
 		}
 	}
 
@@ -157,7 +178,9 @@ func expandEachNode(n *Node, eachExpr string, ctx *BindContext) (*Node, error) {
 	// Collect entities to iterate over.
 	var relatedEntities []*graph.ResolvedEntity
 
-	// "entities" is the special keyword for the list context (e.g. homepage, list pages)
+	// "entities" is the special keyword for the list context (e.g. homepage, list pages).
+	// Also accept any value (e.g. "coffee", "products") and fall back to ctx.Entities
+	// when no matching relation exists — AI-generated views use type slugs as each values.
 	if eachExpr == "entities" && len(ctx.Entities) > 0 {
 		relatedEntities = ctx.Entities
 	} else if ctx.Entity != nil {
@@ -166,6 +189,11 @@ func expandEachNode(n *Node, eachExpr string, ctx *BindContext) (*Node, error) {
 		}
 	}
 	_ = val // val is the data maps slice; we use the full ResolvedEntity slice
+
+	// Fallback: if no relation matched, use ctx.Entities (list context).
+	if len(relatedEntities) == 0 && len(ctx.Entities) > 0 {
+		relatedEntities = ctx.Entities
+	}
 
 	if len(relatedEntities) == 0 {
 		// Nothing to iterate — return an empty wrapper.

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/drafthaus/drafthaus/embed/tailwind"
 	"github.com/drafthaus/drafthaus/internal/draft"
 	"github.com/drafthaus/drafthaus/internal/graph"
 )
@@ -64,7 +65,7 @@ func (p *Pipeline) RenderPage(entity *graph.ResolvedEntity, view *draft.View) ([
 	}
 
 	css := GenerateCSS(tokens)
-	meta := GenerateMeta(entity, tokens)
+	meta := GenerateMeta(entity, tokens, "")
 
 	return []byte(buildHTMLDoc(meta, css, nav+body, tokens)), nil
 }
@@ -133,7 +134,7 @@ func (p *Pipeline) RenderList(entities []*graph.ResolvedEntity, entityType *draf
 			Relations: map[string][]*graph.ResolvedEntity{},
 		}
 	}
-	meta := GenerateMeta(metaEntity, tokens)
+	meta := GenerateMeta(metaEntity, tokens, tokens.SiteName)
 
 	return []byte(buildHTMLDoc(meta, css, nav+body, tokens)), nil
 }
@@ -141,10 +142,8 @@ func (p *Pipeline) RenderList(entities []*graph.ResolvedEntity, entityType *draf
 // buildNav constructs the site-wide navigation bar HTML.
 func (p *Pipeline) buildNav(tokens *draft.Tokens) (string, error) {
 	siteName := "Drafthaus"
-	if tokens != nil {
-		if v, ok := tokens.Colors["site_name"]; ok && v != "" {
-			siteName = v
-		}
+	if tokens != nil && tokens.SiteName != "" {
+		siteName = tokens.SiteName
 	}
 
 	types, err := p.store.ListTypes()
@@ -203,10 +202,16 @@ func parseViewTree(tree any) (*Node, error) {
 
 // buildHTMLDoc wraps rendered content in a complete HTML5 document.
 func buildHTMLDoc(meta, css, body string, tokens *draft.Tokens) string {
-	_ = tokens
 	var b strings.Builder
 	b.WriteString("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n")
 	b.WriteString(meta)
+	if fontLink := GenerateFontLink(tokens); fontLink != "" {
+		b.WriteString(fontLink)
+		b.WriteByte('\n')
+	}
+	b.WriteString("<style>\n")
+	b.Write(tailwind.CSS)
+	b.WriteString("\n</style>\n")
 	b.WriteString("<style>\n")
 	b.WriteString(css)
 	b.WriteString("</style>\n</head>\n<body>\n")

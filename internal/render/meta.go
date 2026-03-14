@@ -10,12 +10,15 @@ import (
 )
 
 // GenerateMeta produces <head> content: title, description, OpenGraph, JSON-LD.
-func GenerateMeta(entity *graph.ResolvedEntity, tokens *draft.Tokens) string {
+func GenerateMeta(entity *graph.ResolvedEntity, tokens *draft.Tokens, siteName string) string {
 	if entity == nil {
 		return "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
 	}
 
-	title := extractTitle(entity)
+	title := siteName
+	if title == "" {
+		title = extractTitle(entity)
+	}
 	description := extractDescription(entity)
 	ogType := mapSchemaType(entity.Type.Name) // reuse for og:type
 	ogTypeValue := "article"
@@ -133,8 +136,8 @@ func buildJSONLD(entity *graph.ResolvedEntity, name, description string) string 
 
 	// Add URL if slug is set.
 	if entity.Entity.Slug != "" && entity.Type.Routes != nil && entity.Type.Routes.Detail != "" {
-		// Routes.Detail is a pattern like "/posts/:slug" — replace :slug.
-		url := strings.ReplaceAll(entity.Type.Routes.Detail, ":slug", entity.Entity.Slug)
+		url := strings.ReplaceAll(entity.Type.Routes.Detail, "{slug}", entity.Entity.Slug)
+		url = strings.ReplaceAll(url, ":slug", entity.Entity.Slug)
 		data["url"] = url
 	}
 
