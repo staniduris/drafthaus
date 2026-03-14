@@ -106,6 +106,19 @@ CREATE TABLE IF NOT EXISTS admin_users (
     password   TEXT NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
+
+CREATE TABLE IF NOT EXISTS page_views (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    path       TEXT NOT NULL,
+    referrer   TEXT DEFAULT '',
+    user_agent TEXT DEFAULT '',
+    visitor_id TEXT DEFAULT '',
+    country    TEXT DEFAULT '',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE INDEX IF NOT EXISTS idx_page_views_path_date ON page_views(path, created_at);
+CREATE INDEX IF NOT EXISTS idx_page_views_date ON page_views(created_at);
 `
 
 // InitSchema creates all tables and seeds metadata if needed.

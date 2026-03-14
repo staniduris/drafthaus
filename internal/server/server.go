@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/drafthaus/drafthaus/internal/analytics"
 	"github.com/drafthaus/drafthaus/internal/draft"
 	"github.com/drafthaus/drafthaus/internal/graph"
 	"github.com/drafthaus/drafthaus/internal/render"
@@ -30,10 +31,19 @@ func New(store draft.Store, host string, port int) (*Server, error) {
 	}
 
 	sessions := NewSessionStore()
-	handlers := NewHandlers(store, resolver, pipeline, router, sessions)
 
-	// Middleware chain: Security → Logging → Gzip → CORS → Auth → Handlers
+	var tracker *analytics.Tracker
+	if sqliteStore, ok := store.(*draft.SQLiteStore); ok {
+		tracker = analytics.NewTracker(sqliteStore.DB())
+	}
+
+	handlers := NewHandlers(store, resolver, pipeline, router, sessions, tracker)
+
+	// Middleware chain: Security → Logging → Gzip → CORS → Auth → Analytics → Handlers
 	var h http.Handler = handlers
+	if tracker != nil {
+		h = analytics.Middleware(tracker)(h)
+	}
 	h = AuthMiddleware(store, sessions)(h)
 	h = CORSMiddleware(h)
 	h = GzipMiddleware(h)

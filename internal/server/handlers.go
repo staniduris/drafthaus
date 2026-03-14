@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/drafthaus/drafthaus/embed/admin"
+	"github.com/drafthaus/drafthaus/internal/analytics"
 	"github.com/drafthaus/drafthaus/internal/draft"
 	"github.com/drafthaus/drafthaus/internal/graph"
 	"github.com/drafthaus/drafthaus/internal/projections"
@@ -30,16 +31,18 @@ type Handlers struct {
 	pipeline *render.Pipeline
 	router   *Router
 	sessions *SessionStore
+	tracker  *analytics.Tracker
 }
 
 // NewHandlers creates a Handlers wiring together all the dependencies.
-func NewHandlers(store draft.Store, resolver *graph.Resolver, pipeline *render.Pipeline, router *Router, sessions *SessionStore) *Handlers {
+func NewHandlers(store draft.Store, resolver *graph.Resolver, pipeline *render.Pipeline, router *Router, sessions *SessionStore, tracker *analytics.Tracker) *Handlers {
 	return &Handlers{
 		store:    store,
 		resolver: resolver,
 		pipeline: pipeline,
 		router:   router,
 		sessions: sessions,
+		tracker:  tracker,
 	}
 }
 
@@ -54,6 +57,10 @@ func (h *Handlers) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		HandleLogout(h.sessions)(w, r)
 	case path == "/_admin/setup":
 		HandleSetup(h.store, h.sessions)(w, r)
+	case path == "/_admin/analytics" || path == "/_admin/analytics/":
+		h.serveAnalytics(w, r)
+	case path == "/_api/analytics":
+		h.serveAnalyticsAPI(w, r)
 	case path == "/_admin" || path == "/_admin/":
 		h.serveAdmin(w, r)
 	case strings.HasPrefix(path, "/_api/"):
@@ -940,6 +947,147 @@ func (h *Handlers) setTokensAPI(w http.ResponseWriter, r *http.Request) {
 	}
 	jsonOK(w, &ts)
 }
+
+// -------------------------------------------------------------------------
+// Analytics
+// -------------------------------------------------------------------------
+
+func (h *Handlers) serveAnalyticsAPI(w http.ResponseWriter, r *http.Request) {
+	if h.tracker == nil {
+		jsonError(w, "analytics not available", http.StatusServiceUnavailable)
+		return
+	}
+	stats, err := h.tracker.Stats(30)
+	if err != nil {
+		jsonError(w, fmt.Sprintf("stats error: %s", err), http.StatusInternalServerError)
+		return
+	}
+	jsonOK(w, stats)
+}
+
+func (h *Handlers) serveAnalytics(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	fmt.Fprint(w, analyticsDashboardHTML)
+}
+
+const analyticsDashboardHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Analytics - Drafthaus</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex}
+.sidebar{width:14rem;background:#1e293b;padding:1.5rem 1rem;flex-shrink:0;display:flex;flex-direction:column;gap:0.25rem}
+.brand{font-size:1.1rem;font-weight:700;letter-spacing:-0.02em;padding:0.5rem 0.75rem;margin-bottom:0.75rem;color:#f1f5f9}
+.brand span{opacity:.4}
+.nav-link{display:block;padding:0.5rem 0.75rem;border-radius:0.5rem;color:#94a3b8;text-decoration:none;font-size:0.875rem;transition:background .15s,color .15s}
+.nav-link:hover{background:#334155;color:#f1f5f9}
+.nav-link.active{background:#334155;color:#f1f5f9}
+.main{flex:1;padding:2rem;overflow:auto}
+h1{font-size:1.5rem;font-weight:700;margin:0 0 0.25rem;color:#f1f5f9}
+.subtitle{color:#64748b;font-size:0.875rem;margin-bottom:2rem}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));gap:1rem;margin-bottom:2rem}
+.metric{background:#1e293b;border-radius:0.75rem;padding:1.25rem}
+.metric-label{font-size:0.75rem;text-transform:uppercase;letter-spacing:.05em;color:#64748b;margin-bottom:0.5rem}
+.metric-value{font-size:2rem;font-weight:700;color:#f1f5f9;line-height:1}
+.section{background:#1e293b;border-radius:0.75rem;padding:1.5rem;margin-bottom:1.5rem}
+.section-title{font-size:0.875rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#64748b;margin:0 0 1rem}
+.chart{display:flex;align-items:flex-end;gap:4px;height:8rem}
+.bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%}
+.bar{width:100%;background:#6366f1;border-radius:3px 3px 0 0;transition:opacity .15s;min-height:2px}
+.bar:hover{opacity:.75}
+.bar-label{font-size:0.6rem;color:#475569;transform:rotate(-45deg);white-space:nowrap}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:0.75rem;text-transform:uppercase;letter-spacing:.05em;color:#64748b;padding:0.5rem 0;border-bottom:1px solid #334155}
+td{padding:0.625rem 0;border-bottom:1px solid #1e293b;font-size:0.875rem;color:#cbd5e1}
+td:last-child{text-align:right;color:#94a3b8}
+.loading{color:#475569;text-align:center;padding:3rem}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+@media(max-width:640px){.two-col{grid-template-columns:1fr}.sidebar{display:none}}
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <div class="brand">Drafthaus <span>admin</span></div>
+  <a href="/_admin" class="nav-link">Dashboard</a>
+  <a href="/_admin/analytics" class="nav-link active">Analytics</a>
+</nav>
+<main class="main">
+  <h1>Analytics</h1>
+  <p class="subtitle">Last 30 days - cookieless, privacy-first</p>
+  <div id="root"><p class="loading">Loading...</p></div>
+</main>
+<script>
+(function(){
+  function el(tag,attrs,children){
+    var e=document.createElement(tag);
+    Object.keys(attrs||{}).forEach(function(k){e[k]=attrs[k];});
+    (children||[]).forEach(function(c){
+      e.appendChild(typeof c==='string'?document.createTextNode(c):c);
+    });
+    return e;
+  }
+  function clearNode(n){while(n.firstChild){n.removeChild(n.firstChild);}}
+  function render(data){
+    var root=document.getElementById('root');
+    clearNode(root);
+    root.appendChild(el('div',{className:'metrics'},[
+      metricCard('Total Views',data.total_views),
+      metricCard('Unique Visitors',data.unique_visitors)
+    ]));
+    root.appendChild(buildChart(data.views_by_day||[]));
+    root.appendChild(el('div',{className:'two-col'},[
+      buildTable('Top Pages',['Page','Views'],data.top_pages||[],function(r){return [r.path,r.views];}),
+      buildTable('Top Referrers',['Referrer','Views'],data.top_referrers||[],function(r){return [r.referrer,r.views];})
+    ]));
+  }
+  function metricCard(label,value){
+    return el('div',{className:'metric'},[
+      el('div',{className:'metric-label'},[label]),
+      el('div',{className:'metric-value'},[(value||0).toLocaleString()])
+    ]);
+  }
+  function buildChart(days){
+    var section=el('div',{className:'section'},[el('div',{className:'section-title'},['Views per day'])]);
+    if(!days.length){section.appendChild(el('p',{className:'loading'},['No data yet']));return section;}
+    var max=Math.max.apply(null,days.map(function(d){return d.views;}));
+    var chart=el('div',{className:'chart'});
+    days.slice(-14).forEach(function(d){
+      var pct=max>0?Math.round((d.views/max)*100):0;
+      var bar=el('div',{className:'bar',title:d.date+': '+d.views+' views'});
+      bar.style.height=Math.max(pct,2)+'%';
+      chart.appendChild(el('div',{className:'bar-wrap'},[bar,el('div',{className:'bar-label'},[d.date.slice(5)])]));
+    });
+    section.appendChild(chart);
+    return section;
+  }
+  function buildTable(title,headers,rows,accessor){
+    var section=el('div',{className:'section'},[el('div',{className:'section-title'},[title])]);
+    if(!rows.length){section.appendChild(el('p',{className:'loading'},['No data yet']));return section;}
+    var thead=el('thead',{},[el('tr',{},headers.map(function(h){return el('th',{},[h]);}))]);
+    var tbody=el('tbody',{},rows.map(function(r){
+      return el('tr',{},accessor(r).map(function(c){return el('td',{},[String(c)]);}));
+    }));
+    section.appendChild(el('table',{},[thead,tbody]));
+    return section;
+  }
+  function showError(){
+    var root=document.getElementById('root');
+    clearNode(root);
+    root.appendChild(el('p',{className:'loading'},['Failed to load analytics.']));
+  }
+  function load(){
+    fetch('/_api/analytics').then(function(r){return r.json();}).then(render).catch(showError);
+  }
+  load();
+  setInterval(load,60000);
+})();
+</script>
+</body>
+</html>`
 
 // -------------------------------------------------------------------------
 // Helpers
