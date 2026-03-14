@@ -7,7 +7,6 @@ import (
 	"github.com/drafthaus/drafthaus/internal/draft"
 )
 
-// radiusValue maps a radius token string to a CSS value.
 func radiusValue(r string) string {
 	switch r {
 	case "none":
@@ -18,19 +17,18 @@ func radiusValue(r string) string {
 		return "1rem"
 	case "full":
 		return "9999px"
-	default: // "md" or unrecognised
+	default:
 		return "0.5rem"
 	}
 }
 
-// densityMultiplier returns a padding multiplier for a density token.
 func densityMultiplier(d string) float64 {
 	switch d {
 	case "compact":
 		return 0.5
 	case "spacious":
 		return 1.5
-	default: // "comfortable"
+	default:
 		return 1.0
 	}
 }
@@ -51,12 +49,12 @@ func GenerateCSS(tokens *draft.Tokens) string {
 	if spacing <= 0 {
 		spacing = 1.0
 	}
-	// Base gap and padding units.
+
 	gap := fmt.Sprintf("%.4grem", 1.0*spacing)
-	padSm := fmt.Sprintf("%.4grem", 0.5*spacing*density)
-	padMd := fmt.Sprintf("%.4grem", 1.0*spacing*density)
-	padLg := fmt.Sprintf("%.4grem", 1.5*spacing*density)
-	padXl := fmt.Sprintf("%.4grem", 2.0*spacing*density)
+	_ = fmt.Sprintf("%.4grem", 0.5*spacing*density) // padSm - reserved
+	_ = fmt.Sprintf("%.4grem", 1.0*spacing*density) // padMd - reserved
+	padLg := fmt.Sprintf("%.4grem", 2.0*spacing*density)
+	padXl := fmt.Sprintf("%.4grem", 3.0*spacing*density)
 
 	colorVar := func(name string) string {
 		return fmt.Sprintf("var(--dh-color-%s, #000)", name)
@@ -67,7 +65,7 @@ func GenerateCSS(tokens *draft.Tokens) string {
 
 	var b strings.Builder
 
-	// ---- CSS custom properties -------------------------------------------
+	// ---- Custom properties --------------------------------------------------
 	b.WriteString(":root {\n")
 	for name, val := range tokens.Colors {
 		fmt.Fprintf(&b, "  --dh-color-%s: %s;\n", name, val)
@@ -78,145 +76,442 @@ func GenerateCSS(tokens *draft.Tokens) string {
 	fmt.Fprintf(&b, "  --dh-spacing: %.4grem;\n", spacing)
 	fmt.Fprintf(&b, "  --dh-radius: %s;\n", radius)
 	fmt.Fprintf(&b, "  --dh-density: %.4g;\n", density)
-	fmt.Fprintf(&b, "  --dh-sidebar-width: 300px;\n")
+	b.WriteString("  --dh-sidebar-width: 300px;\n")
 	b.WriteString("}\n\n")
 
 	// ---- Reset --------------------------------------------------------------
 	b.WriteString(`*,*::before,*::after{box-sizing:border-box}
 body,h1,h2,h3,h4,h5,h6,p,figure,blockquote,dl,dd{margin:0}
-html{line-height:1.5;-webkit-text-size-adjust:100%}
+ul,ol{margin:0}
+html{line-height:1.5;-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+img,picture,video,canvas,svg{display:block;max-width:100%}
+input,button,textarea,select{font:inherit}
 `)
 	b.WriteString("\n")
 
-	// ---- Base typography ----------------------------------------------------
-	fmt.Fprintf(&b, "body{\n  font-family:%s;\n  color:%s;\n  background:%s;\n  line-height:1.6;\n}\n\n",
-		fontVar("body"),
-		colorVar("text"),
-		colorVar("background"),
-	)
-	fmt.Fprintf(&b, "h1,h2,h3,h4,h5,h6{\n  font-family:%s;\n  line-height:1.2;\n  color:%s;\n}\n\n",
-		fontVar("heading"),
-		colorVar("text"),
-	)
-	fmt.Fprintf(&b, "a{color:%s;}\n\n", colorVar("primary"))
+	// ---- Base typography with scale -----------------------------------------
+	fmt.Fprintf(&b, `body{
+  font-family:%s;
+  color:%s;
+  background:%s;
+  line-height:1.6;
+  font-size:1rem;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
 
-	// ---- Layout primitives --------------------------------------------------
-	fmt.Fprintf(&b, ".dh-page{\n  max-width:72rem;\n  padding:%s %s;\n  margin:0 auto;\n}\n\n",
-		padLg, padMd)
+`, fontVar("body"), colorVar("text"), colorVar("background"))
 
-	fmt.Fprintf(&b, ".dh-stack{\n  display:flex;\n  flex-direction:column;\n  gap:%s;\n}\n\n", gap)
+	fmt.Fprintf(&b, `h1,h2,h3,h4,h5,h6{
+  font-family:%s;
+  line-height:1.15;
+  color:%s;
+  letter-spacing:-0.02em;
+  font-weight:700;
+}
 
-	fmt.Fprintf(&b, ".dh-columns{\n  display:grid;\n  gap:%s;\n}\n\n", gap)
+h1{font-size:clamp(2.25rem,5vw,3.5rem);letter-spacing:-0.03em}
+h2{font-size:clamp(1.5rem,3vw,2.25rem)}
+h3{font-size:clamp(1.25rem,2vw,1.5rem)}
+h4{font-size:1.125rem}
+h5{font-size:1rem}
+h6{font-size:0.875rem}
 
-	b.WriteString(".dh-col{\n  min-width:0;\n}\n\n")
+`, fontVar("heading"), colorVar("text"))
 
-	fmt.Fprintf(&b, ".dh-grid{\n  display:grid;\n  gap:%s;\n  grid-template-columns:repeat(auto-fill,minmax(16rem,1fr));\n}\n\n", gap)
+	fmt.Fprintf(&b, `a{color:%s;transition:color 0.15s}
+a:hover{opacity:0.8}
+p{line-height:1.7}
 
-	fmt.Fprintf(&b, ".dh-section{\n  padding-block:%s;\n}\n\n", padXl)
+`, colorVar("primary"))
 
-	fmt.Fprintf(&b, ".dh-sidebar{\n  display:grid;\n  gap:%s;\n  grid-template-columns:1fr var(--dh-sidebar-width,300px);\n  align-items:start;\n}\n\n", gap)
+	// ---- Layout -------------------------------------------------------------
+	fmt.Fprintf(&b, `.dh-page{
+  max-width:64rem;
+  padding:%s %s;
+  margin:0 auto;
+}
 
-	fmt.Fprintf(&b, ".dh-container{\n  max-width:72rem;\n  margin:0 auto;\n  padding:0 %s;\n}\n\n", padMd)
+`, padXl, padLg)
 
-	// ---- Content primitives -------------------------------------------------
-	fmt.Fprintf(&b, ".dh-text{\n  line-height:1.6;\n  margin-bottom:%s;\n}\n\n", padSm)
+	fmt.Fprintf(&b, `.dh-stack{
+  display:flex;
+  flex-direction:column;
+  gap:%s;
+}
 
-	fmt.Fprintf(&b, ".dh-heading{\n  font-family:%s;\n  margin-bottom:%s;\n  line-height:1.2;\n}\n\n",
-		fontVar("heading"), padSm)
+`, gap)
 
-	fmt.Fprintf(&b, ".dh-richtext{\n  line-height:1.7;\n}\n")
-	fmt.Fprintf(&b, ".dh-richtext p{margin-bottom:%s}\n\n", padSm)
+	fmt.Fprintf(&b, `.dh-columns{
+  display:grid;
+  gap:%s;
+}
 
-	fmt.Fprintf(&b, ".dh-image img{\n  max-width:100%%;\n  height:auto;\n  border-radius:%s;\n  display:block;\n}\n\n", radius)
+.dh-col{min-width:0}
 
-	b.WriteString(".dh-video video{\n  max-width:100%;\n  display:block;\n}\n\n")
+`, padLg)
 
-	b.WriteString(".dh-embed iframe{\n  width:100%;\n  border:none;\n  display:block;\n}\n\n")
+	fmt.Fprintf(&b, `.dh-grid{
+  display:grid;
+  gap:%s;
+  grid-template-columns:repeat(auto-fill,minmax(18rem,1fr));
+}
 
-	fmt.Fprintf(&b, ".dh-code{\n  background:%s;\n  padding:%s;\n  border-radius:%s;\n  overflow-x:auto;\n  font-family:%s;\n  font-size:0.875em;\n}\n\n",
-		colorVar("surface"), padMd, radius, fontVar("mono"))
+`, padLg)
 
-	// ---- Data primitives ----------------------------------------------------
-	fmt.Fprintf(&b, ".dh-card{\n  border:1px solid %s;\n  border-radius:%s;\n  padding:%s;\n  background:%s;\n}\n\n",
-		colorVar("border"), radius, padMd, colorVar("surface"))
+	fmt.Fprintf(&b, `.dh-section{
+  padding-block:%s;
+}
 
-	fmt.Fprintf(&b, ".dh-badge{\n  display:inline-block;\n  padding:%s %s;\n  border-radius:%s;\n  font-size:0.75rem;\n  font-weight:600;\n  background:%s;\n  color:%s;\n}\n",
-		padSm, padMd, radius, colorVar("surface"), colorVar("text"))
-	fmt.Fprintf(&b, ".dh-badge--success{background:#dcfce7;color:#166534;}\n")
-	fmt.Fprintf(&b, ".dh-badge--warning{background:#fef9c3;color:#854d0e;}\n")
-	fmt.Fprintf(&b, ".dh-badge--error{background:#fee2e2;color:#991b1b;}\n\n")
+.dh-section:first-child{
+  padding-top:%s;
+  padding-bottom:%s;
+  text-align:center;
+}
 
-	fmt.Fprintf(&b, ".dh-price{\n  font-weight:700;\n  font-variant-numeric:tabular-nums;\n  color:%s;\n}\n\n", colorVar("text"))
+.dh-section:first-child .dh-heading{
+  margin-bottom:0.75rem;
+}
 
-	// ---- Interactive primitives ---------------------------------------------
-	fmt.Fprintf(&b, ".dh-action{\n  display:inline-flex;\n  align-items:center;\n  justify-content:center;\n  padding:%s %s;\n  border-radius:%s;\n  cursor:pointer;\n  font-weight:600;\n  text-decoration:none;\n  background:%s;\n  color:#fff;\n  border:2px solid %s;\n  transition:opacity 0.15s;\n}\n",
-		padSm, padMd, radius, colorVar("primary"), colorVar("primary"))
-	fmt.Fprintf(&b, ".dh-action:hover{opacity:0.85;}\n")
-	fmt.Fprintf(&b, ".dh-action--secondary{\n  background:transparent;\n  color:%s;\n  border-color:%s;\n}\n\n",
-		colorVar("primary"), colorVar("primary"))
+.dh-section:first-child .dh-text{
+  font-size:1.25rem;
+  color:%s;
+  max-width:40rem;
+  margin-left:auto;
+  margin-right:auto;
+}
 
-	fmt.Fprintf(&b, ".dh-form{\n  display:flex;\n  flex-direction:column;\n  gap:%s;\n}\n\n", gap)
+`, padXl, padXl, padLg, colorVar("muted"))
 
-	fmt.Fprintf(&b, ".dh-field{\n  display:flex;\n  flex-direction:column;\n  gap:0.25rem;\n}\n")
-	fmt.Fprintf(&b, ".dh-field label{\n  font-size:0.875rem;\n  font-weight:500;\n}\n")
-	fmt.Fprintf(&b, ".dh-field input,.dh-field textarea,.dh-field select{\n  padding:%s;\n  border:1px solid %s;\n  border-radius:%s;\n  font:inherit;\n  background:%s;\n  color:%s;\n}\n\n",
-		padSm, colorVar("border"), radius, colorVar("background"), colorVar("text"))
+	fmt.Fprintf(&b, `.dh-sidebar{
+  display:grid;
+  gap:%s;
+  grid-template-columns:1fr var(--dh-sidebar-width,300px);
+  align-items:start;
+}
 
-	fmt.Fprintf(&b, ".dh-search{\n  position:relative;\n}\n")
-	fmt.Fprintf(&b, ".dh-search__input{\n  width:100%%;\n  padding:%s;\n  border:1px solid %s;\n  border-radius:%s;\n  font:inherit;\n}\n",
-		padSm, colorVar("border"), radius)
-	fmt.Fprintf(&b, ".dh-search__results{\n  position:absolute;\n  top:100%%;\n  left:0;\n  right:0;\n  background:%s;\n  border:1px solid %s;\n  border-radius:%s;\n  z-index:10;\n}\n\n",
-		colorVar("background"), colorVar("border"), radius)
+`, padLg)
 
-	// ---- Navigation primitives ----------------------------------------------
-	fmt.Fprintf(&b, ".dh-nav{\n  display:flex;\n  align-items:center;\n  gap:%s;\n  flex-wrap:wrap;\n}\n\n", gap)
+	fmt.Fprintf(&b, `.dh-container{
+  max-width:64rem;
+  margin:0 auto;
+  padding:0 %s;
+}
 
-	fmt.Fprintf(&b, ".dh-link{\n  color:%s;\n  text-decoration:none;\n}\n", colorVar("primary"))
-	b.WriteString(".dh-link:hover{text-decoration:underline;}\n\n")
+`, padLg)
 
-	b.WriteString(".dh-breadcrumb ol{\n  display:flex;\n  list-style:none;\n  padding:0;\n  margin:0;\n  gap:0.5rem;\n  align-items:center;\n}\n")
-	fmt.Fprintf(&b, ".dh-breadcrumb li+li::before{\n  content:\"/\";\n  color:%s;\n}\n\n", colorVar("muted"))
+	// ---- Content ------------------------------------------------------------
+	fmt.Fprintf(&b, `.dh-text{
+  line-height:1.7;
+  color:%s;
+}
 
-	fmt.Fprintf(&b, ".dh-pagination{\n  display:flex;\n  justify-content:center;\n  align-items:center;\n  gap:%s;\n}\n\n", gap)
+`, colorVar("text"))
+
+	fmt.Fprintf(&b, `.dh-heading{
+  font-family:%s;
+  line-height:1.15;
+}
+
+`, fontVar("heading"))
+
+	fmt.Fprintf(&b, `.dh-richtext{
+  line-height:1.8;
+  font-size:1.0625rem;
+}
+.dh-richtext p{margin-bottom:1.25em}
+.dh-richtext h1,.dh-richtext h2,.dh-richtext h3{margin-top:2em;margin-bottom:0.75em}
+.dh-richtext ul,.dh-richtext ol{margin-bottom:1.25em;padding-left:1.5em}
+.dh-richtext li{margin-bottom:0.25em}
+.dh-richtext blockquote{
+  border-left:3px solid %s;
+  padding-left:1.25em;
+  margin:1.5em 0;
+  color:%s;
+  font-style:italic;
+}
+
+`, colorVar("primary"), colorVar("muted"))
+
+	fmt.Fprintf(&b, `.dh-image img{
+  max-width:100%%;
+  height:auto;
+  border-radius:%s;
+  display:block;
+}
+.dh-image{margin:1.5rem 0}
+
+`, radius)
+
+	b.WriteString(`.dh-video video{max-width:100%;display:block}
+.dh-embed iframe{width:100%;border:none;display:block;aspect-ratio:16/9}
+
+`)
+
+	fmt.Fprintf(&b, `.dh-code{
+  background:%s;
+  padding:1.25rem 1.5rem;
+  border-radius:%s;
+  overflow-x:auto;
+  font-family:%s;
+  font-size:0.875rem;
+  line-height:1.6;
+  border:1px solid %s;
+  margin:1.5rem 0;
+}
+.dh-code code{background:none;padding:0;font-size:inherit}
+
+`, colorVar("surface"), radius, fontVar("mono"), colorVar("border"))
+
+	// ---- Cards --------------------------------------------------------------
+	fmt.Fprintf(&b, `.dh-card{
+  border:1px solid %s;
+  border-radius:%s;
+  padding:%s;
+  background:%s;
+  transition:all 0.2s ease;
+}
+.dh-card .dh-heading{
+  margin-bottom:0.5rem;
+}
+.dh-card .dh-text{
+  color:%s;
+  font-size:0.9375rem;
+  line-height:1.6;
+}
+.dh-card a{
+  text-decoration:none;
+  color:inherit;
+  display:block;
+}
+.dh-card:hover{
+  border-color:%s;
+  box-shadow:0 4px 12px rgba(0,0,0,0.06);
+  transform:translateY(-2px);
+}
+
+`, colorVar("border"), radius, padLg, colorVar("background"), colorVar("muted"), colorVar("primary"))
+
+	// ---- Badges -------------------------------------------------------------
+	fmt.Fprintf(&b, `.dh-badge{
+  display:inline-block;
+  padding:0.25rem 0.75rem;
+  border-radius:9999px;
+  font-size:0.75rem;
+  font-weight:600;
+  background:%s;
+  color:%s;
+  letter-spacing:0.025em;
+  text-transform:uppercase;
+}
+.dh-badge--success{background:#dcfce7;color:#166534}
+.dh-badge--warning{background:#fef9c3;color:#854d0e}
+.dh-badge--error{background:#fee2e2;color:#991b1b}
+
+`, colorVar("surface"), colorVar("muted"))
+
+	fmt.Fprintf(&b, `.dh-price{
+  font-weight:800;
+  font-variant-numeric:tabular-nums;
+  font-size:1.25rem;
+  color:%s;
+}
+
+`, colorVar("text"))
+
+	// ---- Interactive --------------------------------------------------------
+	fmt.Fprintf(&b, `.dh-action{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0.75rem 1.75rem;
+  border-radius:%s;
+  cursor:pointer;
+  font-weight:600;
+  font-size:0.9375rem;
+  text-decoration:none;
+  background:%s;
+  color:#fff;
+  border:2px solid %s;
+  transition:all 0.15s ease;
+  letter-spacing:0.01em;
+}
+.dh-action:hover{
+  transform:translateY(-1px);
+  box-shadow:0 4px 12px rgba(0,0,0,0.15);
+  opacity:1;
+}
+.dh-action--secondary{
+  background:transparent;
+  color:%s;
+  border-color:%s;
+}
+.dh-action--secondary:hover{
+  background:%s;
+}
+
+`, radius, colorVar("primary"), colorVar("primary"),
+		colorVar("primary"), colorVar("primary"), colorVar("surface"))
+
+	fmt.Fprintf(&b, `.dh-form{display:flex;flex-direction:column;gap:%s}
+
+`, gap)
+
+	fmt.Fprintf(&b, `.dh-field{display:flex;flex-direction:column;gap:0.375rem}
+.dh-field label{font-size:0.875rem;font-weight:600;color:%s}
+.dh-field input,.dh-field textarea,.dh-field select{
+  padding:0.625rem 0.875rem;
+  border:1px solid %s;
+  border-radius:%s;
+  font:inherit;
+  background:%s;
+  color:%s;
+  transition:border-color 0.15s;
+}
+.dh-field input:focus,.dh-field textarea:focus,.dh-field select:focus{
+  outline:none;
+  border-color:%s;
+  box-shadow:0 0 0 3px rgba(37,99,235,0.1);
+}
+
+`, colorVar("text"), colorVar("border"), radius, colorVar("background"), colorVar("text"), colorVar("primary"))
+
+	fmt.Fprintf(&b, `.dh-search{position:relative}
+.dh-search__input{
+  width:100%%;
+  padding:0.625rem 0.875rem;
+  border:1px solid %s;
+  border-radius:%s;
+  font:inherit;
+}
+.dh-search__results{
+  position:absolute;top:100%%;left:0;right:0;
+  background:%s;
+  border:1px solid %s;
+  border-radius:%s;
+  z-index:10;
+  box-shadow:0 8px 24px rgba(0,0,0,0.1);
+}
+
+`, colorVar("border"), radius, colorVar("background"), colorVar("border"), radius)
+
+	// ---- Navigation ---------------------------------------------------------
+	fmt.Fprintf(&b, `.dh-nav{display:flex;align-items:center;gap:%s;flex-wrap:wrap}
+
+`, gap)
+
+	fmt.Fprintf(&b, `.dh-link{color:%s;text-decoration:none;transition:color 0.15s}
+.dh-link:hover{text-decoration:underline}
+
+`, colorVar("primary"))
+
+	fmt.Fprintf(&b, `.dh-breadcrumb ol{display:flex;list-style:none;padding:0;margin:0;gap:0.5rem;align-items:center}
+.dh-breadcrumb li+li::before{content:"/";color:%s}
+
+`, colorVar("muted"))
+
+	fmt.Fprintf(&b, `.dh-pagination{display:flex;justify-content:center;align-items:center;gap:%s}
+
+`, gap)
 
 	// ---- Callout / List / Table ---------------------------------------------
-	fmt.Fprintf(&b, ".dh-callout{\n  border-left:4px solid %s;\n  padding:%s %s;\n  background:%s;\n  border-radius:0 %s %s 0;\n}\n\n",
-		colorVar("primary"), padSm, padMd, colorVar("surface"), radius, radius)
+	fmt.Fprintf(&b, `.dh-callout{
+  border-left:4px solid %s;
+  padding:1rem 1.25rem;
+  background:%s;
+  border-radius:0 %s %s 0;
+  margin:1.5rem 0;
+}
 
-	fmt.Fprintf(&b, ".dh-list{\n  padding-left:1.5rem;\n  line-height:1.7;\n}\n\n")
+`, colorVar("primary"), colorVar("surface"), radius, radius)
 
-	fmt.Fprintf(&b, ".dh-table{\n  width:100%%;\n  border-collapse:collapse;\n  font-size:0.9rem;\n}\n")
-	fmt.Fprintf(&b, ".dh-table th,.dh-table td{\n  padding:%s;\n  border-bottom:1px solid %s;\n  text-align:left;\n}\n",
-		padSm, colorVar("border"))
-	fmt.Fprintf(&b, ".dh-table th{\n  font-weight:600;\n  color:%s;\n}\n\n", colorVar("secondary"))
+	b.WriteString(`.dh-list{padding-left:1.5rem;line-height:1.7}
 
-	// ---- Map ----------------------------------------------------------------
-	fmt.Fprintf(&b, ".dh-map{\n  aspect-ratio:16/9;\n  background:%s;\n  display:flex;\n  align-items:center;\n  justify-content:center;\n  border-radius:%s;\n  overflow:hidden;\n}\n\n",
-		colorVar("surface"), radius)
+`)
+
+	fmt.Fprintf(&b, `.dh-table{width:100%%;border-collapse:collapse;font-size:0.9375rem}
+.dh-table th,.dh-table td{padding:0.75rem 1rem;border-bottom:1px solid %s;text-align:left}
+.dh-table th{font-weight:600;color:%s;font-size:0.8125rem;text-transform:uppercase;letter-spacing:0.05em}
+.dh-table tr:hover td{background:%s}
+
+`, colorVar("border"), colorVar("muted"), colorVar("surface"))
+
+	fmt.Fprintf(&b, `.dh-map{
+  aspect-ratio:16/9;
+  background:%s;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:%s;
+  overflow:hidden;
+}
+
+`, colorVar("surface"), radius)
 
 	// ---- Site nav -----------------------------------------------------------
-	b.WriteString(".dh-site-nav{\n  background:var(--dh-color-text);\n  color:var(--dh-color-background);\n  padding:0 1rem;\n}\n")
-	b.WriteString(".dh-site-nav__inner{\n  max-width:72rem;\n  margin:0 auto;\n  display:flex;\n  align-items:center;\n  justify-content:space-between;\n  height:3.5rem;\n}\n")
-	b.WriteString(".dh-site-nav__brand{\n  font-weight:700;\n  font-size:1.125rem;\n  color:inherit;\n  text-decoration:none;\n}\n")
-	b.WriteString(".dh-site-nav__links{\n  display:flex;\n  gap:1.5rem;\n}\n")
-	b.WriteString(".dh-site-nav__links a{\n  color:inherit;\n  text-decoration:none;\n  opacity:0.8;\n}\n")
-	b.WriteString(".dh-site-nav__links a:hover{\n  opacity:1;\n}\n\n")
+	fmt.Fprintf(&b, `.dh-site-nav{
+  background:%s;
+  color:%s;
+  padding:0 1.5rem;
+  position:sticky;
+  top:0;
+  z-index:100;
+  backdrop-filter:blur(8px);
+}
+.dh-site-nav__inner{
+  max-width:64rem;
+  margin:0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  height:3.5rem;
+}
+.dh-site-nav__brand{
+  font-weight:800;
+  font-size:1.125rem;
+  color:inherit;
+  text-decoration:none;
+  letter-spacing:-0.02em;
+}
+.dh-site-nav__links{
+  display:flex;
+  gap:2rem;
+}
+.dh-site-nav__links a{
+  color:inherit;
+  text-decoration:none;
+  opacity:0.7;
+  font-size:0.875rem;
+  font-weight:500;
+  transition:opacity 0.15s;
+  letter-spacing:0.01em;
+}
+.dh-site-nav__links a:hover{opacity:1}
 
-	// ---- Card links --------------------------------------------------------
-	b.WriteString(".dh-card a{\n  text-decoration:none;\n  color:inherit;\n  display:block;\n}\n")
-	b.WriteString(".dh-card:has(a):hover{\n  box-shadow:0 2px 8px rgba(0,0,0,0.08);\n  transform:translateY(-1px);\n  transition:all 0.15s;\n}\n\n")
+`, colorVar("text"), colorVar("background"))
 
-	// ---- Footer ------------------------------------------------------------
-	b.WriteString(".dh-footer{\n  text-align:center;\n  padding:2rem 1rem;\n  margin-top:3rem;\n  border-top:1px solid var(--dh-color-border);\n  color:var(--dh-color-muted);\n  font-size:0.875rem;\n}\n\n")
+	// ---- Footer -------------------------------------------------------------
+	fmt.Fprintf(&b, `.dh-footer{
+  text-align:center;
+  padding:2.5rem 1rem;
+  margin-top:4rem;
+  border-top:1px solid %s;
+  color:%s;
+  font-size:0.8125rem;
+  letter-spacing:0.01em;
+}
+
+`, colorVar("border"), colorVar("muted"))
 
 	// ---- Responsive ---------------------------------------------------------
-	b.WriteString("@media (max-width:768px){\n")
-	b.WriteString("  .dh-columns{grid-template-columns:1fr !important;}\n")
-	b.WriteString("  .dh-grid{grid-template-columns:1fr !important;}\n")
-	b.WriteString("  .dh-sidebar{grid-template-columns:1fr !important;}\n")
-	fmt.Fprintf(&b, "  .dh-page{padding:%s %s;}\n", padMd, padSm)
-	fmt.Fprintf(&b, "  .dh-section{padding-block:%s;}\n", padLg)
-	b.WriteString("}\n")
+	b.WriteString(`@media (max-width:768px){
+  .dh-columns{grid-template-columns:1fr !important}
+  .dh-grid{grid-template-columns:1fr !important}
+  .dh-sidebar{grid-template-columns:1fr !important}
+  .dh-page{padding:2rem 1rem}
+  .dh-section{padding-block:2rem}
+  .dh-site-nav__links{gap:1rem}
+  .dh-card{padding:1.25rem}
+}
+`)
 
 	return b.String()
 }
