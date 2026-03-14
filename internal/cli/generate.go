@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -10,29 +11,45 @@ import (
 	"github.com/drafthaus/drafthaus/internal/draft"
 )
 
-// Generate creates a new .draft file from a natural language description.
-func Generate(name, description string, cfg ai.Config) error {
+// Generate creates a new .draft file from a natural language description or a spec file.
+func Generate(name, description string, cfg ai.Config, specFile string) error {
 	filename := name + ".draft"
 	if _, err := os.Stat(filename); err == nil {
 		return fmt.Errorf("file already exists: %s", filename)
 	}
 
-	provider, err := ai.NewProvider(cfg)
-	if err != nil {
-		return fmt.Errorf("create AI provider: %w", err)
-	}
-	if provider == nil {
-		return fmt.Errorf("AI provider required for generate command (set --provider and --api-key)")
-	}
+	var spec *ai.SiteSpec
 
-	fmt.Printf("Generating site from description using %s...\n", provider.Name())
+	if specFile != "" {
+		// Load spec from JSON file
+		data, err := os.ReadFile(specFile)
+		if err != nil {
+			return fmt.Errorf("read spec file: %w", err)
+		}
+		spec = &ai.SiteSpec{}
+		if err := json.Unmarshal(data, spec); err != nil {
+			return fmt.Errorf("parse spec file: %w", err)
+		}
+		fmt.Printf("Loaded spec from %s\n", specFile)
+	} else {
+		// Generate spec via AI
+		provider, err := ai.NewProvider(cfg)
+		if err != nil {
+			return fmt.Errorf("create AI provider: %w", err)
+		}
+		if provider == nil {
+			return fmt.Errorf("AI provider required (set --provider and --api-key, or use --spec <file.json>)")
+		}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
+		fmt.Printf("Generating site from description using %s...\n", provider.Name())
 
-	spec, err := ai.GenerateSite(ctx, provider, description)
-	if err != nil {
-		return fmt.Errorf("generate site spec: %w", err)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+
+		spec, err = ai.GenerateSite(ctx, provider, description)
+		if err != nil {
+			return fmt.Errorf("generate site spec: %w", err)
+		}
 	}
 
 	fmt.Printf("Creating %s with %d entity types...\n", filename, len(spec.EntityTypes))

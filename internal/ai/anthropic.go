@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 type anthropicProvider struct {
@@ -63,8 +64,13 @@ func (p *anthropicProvider) Complete(ctx context.Context, messages []Message) (s
 		return "", fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", p.apiKey)
 	req.Header.Set("anthropic-version", "2023-06-01")
+	// OAuth tokens (sk-ant-oat01-) use Bearer auth; standard API keys use x-api-key
+	if strings.HasPrefix(p.apiKey, "sk-ant-oat01-") {
+		req.Header.Set("Authorization", "Bearer "+p.apiKey)
+	} else {
+		req.Header.Set("x-api-key", p.apiKey)
+	}
 
 	resp, err := p.client.Do(req)
 	if err != nil {
